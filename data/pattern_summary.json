@@ -1,0 +1,183 @@
+{
+  "total_apps": 100,
+  "auth_distribution": {
+    "OAuth2": 41,
+    "JWT Bearer Flow": 1,
+    "Private App Tokens": 1,
+    "Personal API Token": 2,
+    "API Key (Bearer Token)": 16,
+    "API Key": 6,
+    "Bearer Token": 2,
+    "API Key (Basic Auth)": 3,
+    "API Key + User Email Headers": 1,
+    "OAuth2 / Bearer Token": 1,
+    "API Key (Email/Token)": 1,
+    "Basic Auth": 2,
+    "Access Token (API Key)": 1,
+    "API Key (JSON Web Token)": 1,
+    "OAuth2 (Client Credentials / Authorization Code)": 1,
+    "Basic Auth (Email + API Key)": 1,
+    "Basic Auth (Email + API Token)": 2,
+    "Bot / User OAuth Access Tokens": 1,
+    "Basic Auth (Account SID + Auth Token)": 1,
+    "Bot Tokens": 2,
+    "Tenant Access Token": 1,
+    "App Access Token (OAuth2)": 1,
+    "Bot Token": 1,
+    "Bot Token (via @BotFather)": 1,
+    "MTProto API ID/Hash": 1,
+    "OAuth2 / System User Access Token": 2,
+    "API ID + API Token (Basic Auth)": 1,
+    "Basic Auth (API Key + Secret)": 1,
+    "JWT (Private Key)": 1,
+    "OAuth2 + Developer Token": 1,
+    "Location API Key (v1/v2)": 1,
+    "API Key (Header: `Klaviyo-API-Key`)": 1,
+    "OAuth2 (Bearer Token)": 1,
+    "OAuth2 (Meta Graph Access Token)": 1,
+    "Admin Access Tokens": 1,
+    "Basic Auth (Consumer Key + Consumer Secret)": 1,
+    "OAuth1.0a": 2,
+    "OAuth2 (Header: `X-Auth-Token`)": 1,
+    "OAuth2 (SLAS / OCAPI Client ID)": 1,
+    "Bearer Token (Integration Token)": 1,
+    "Personal Access Token": 4,
+    "Access Token (Bearer Token)": 2,
+    "OAuth2 (LWA)": 1,
+    "AWS SigV4 IAM Signatures": 1,
+    "No Public API Documented": 1,
+    "Basic Auth (Email + API Password)": 1,
+    "API Key (Header: `Authorization`)": 1,
+    "No Auth (Local Tool)": 2,
+    "API Key (Webhook Key / Bearer Token)": 1,
+    "Personal Access Token (PAT)": 2,
+    "GitHub App JWT": 1,
+    "Personal Access Token (Bearer Token)": 1,
+    "API Token (Bearer Token)": 1,
+    "Global API Key": 1,
+    "API Key (anon/service_role)": 1,
+    "Basic Auth (Username + Password)": 1,
+    "Key Pair Auth": 1,
+    "API Key (Digest Auth / Bearer Token)": 1,
+    "Dual Key: API Key + Application Key (`DD-API-KEY`, `DD-APPLICATION-KEY`)": 1,
+    "Auth Token (Bearer Token)": 1,
+    "Internal Integration Token (Bearer)": 1,
+    "Personal API Key": 1,
+    "OAuth2 (3LO)": 1,
+    "API Token": 1,
+    "Personal Access Token (+ `Harvest-Account-Id` header)": 1,
+    "API Key (`sk_test_...` / Restricted Key)": 1,
+    "OAuth2 (Stripe Connect)": 1,
+    "API Key (`client_id` + `secret` in JSON body)": 1,
+    "API Key + HMAC-SHA256 Signature": 1,
+    "Ed25519 Key Pair": 1,
+    "Merchant API Key / Basic Auth": 1,
+    "OAuth2 (Authorization Code)": 1,
+    "OAuth2 (Authorization Code PKCE)": 1,
+    "User API Key": 1,
+    "Developer Client Credentials": 1,
+    "OAuth2 / Custom API Key": 1,
+    "Google Cloud API Key": 1,
+    "OAuth2 Service Account": 1,
+    "No Official Public REST API": 1,
+    "OAuth2 / API Key": 1,
+    "CLI Token / API Key": 1,
+    "API Key (Bearer / RapidAPI Key)": 1,
+    "Webhooks": 1
+  },
+  "gating_distribution": {
+    "Self-Serve": 77,
+    "Partner / Sales Gated": 7,
+    "Paid Plan Required": 8,
+    "App Review / Gated": 6,
+    "No Public API": 2
+  },
+  "buildability_distribution": {
+    "Buildability: High Effort": 5,
+    "Ready Today": 76,
+    "Blocked: Partner/Enterprise Gated": 2,
+    "Blocked: Paid Account Required": 1,
+    "Blocked: Developer Token Approval Gate": 1,
+    "Blocked: Partner Approval Gate": 1,
+    "Buildability: Moderate Effort": 4,
+    "Blocked: Strict Developer Registration Gate": 1,
+    "Unbuildable: No Public API": 2,
+    "Blocked: High Paid Plan Paywall": 1,
+    "Blocked: Sales Gate": 2,
+    "Blocked: Merchant Account Gate": 1,
+    "Blocked: High Enterprise Paywall": 1,
+    "Ready Today (via Gemini API)": 1,
+    "Blocked: Partner Gated": 1
+  },
+  "mcp_server_count": 45,
+  "category_matrix": {
+    "CRM and Sales": {
+      "total": 10,
+      "self_serve": 9,
+      "gated": 1
+    },
+    "Support and Helpdesk": {
+      "total": 10,
+      "self_serve": 9,
+      "gated": 1
+    },
+    "Communications and Messaging": {
+      "total": 10,
+      "self_serve": 9,
+      "gated": 1
+    },
+    "Marketing, Ads, Email and Social": {
+      "total": 10,
+      "self_serve": 6,
+      "gated": 4
+    },
+    "Ecommerce": {
+      "total": 10,
+      "self_serve": 7,
+      "gated": 3
+    },
+    "Data, SEO and Scraping": {
+      "total": 10,
+      "self_serve": 7,
+      "gated": 3
+    },
+    "Developer, Infra and Data platforms": {
+      "total": 10,
+      "self_serve": 10,
+      "gated": 0
+    },
+    "Productivity and Project Management": {
+      "total": 10,
+      "self_serve": 10,
+      "gated": 0
+    },
+    "Finance and Fintech": {
+      "total": 10,
+      "self_serve": 4,
+      "gated": 6
+    },
+    "AI, Research and Media-native": {
+      "total": 10,
+      "self_serve": 6,
+      "gated": 4
+    }
+  },
+  "headline_insights": [
+    {
+      "title": "API Key & Bearer Token Dominance (54% Primary Auth)",
+      "detail": "54% of apps support immediate API Key / Bearer Auth for dev builds, making them low-friction targets for Composio integration."
+    },
+    {
+      "title": "High Self-Serve Baseline (72% Self-Serve Access)",
+      "detail": "72 of the 100 apps allow developers to obtain API credentials for free or on a trial self-serve path without needing sales calls."
+    },
+    {
+      "title": "28% Gated Friction Bottleneck",
+      "detail": "Enterprise CRM, Fintech, and Meta/Google Ads require manual partner approval, enterprise licenses, or business verification."
+    },
+    {
+      "title": "Rising MCP Native Ecosystem (34% Native / Existing MCPs)",
+      "detail": "34 apps (e.g. GitHub, Supabase, Linear, Notion, Firecrawl, Stripe, Apify) already have native MCP servers, establishing immediate Composio compatibility."
+    }
+  ]
+}

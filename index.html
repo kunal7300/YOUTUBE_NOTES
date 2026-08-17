@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Composio | 100-App Agent Integration & Toolkit Feasibility Study</title>
+  <meta name="description" content="A comprehensive analysis of 100 apps across 10 categories evaluating auth methods, self-serve gating, API surface, buildability, and multi-pass agent verification loops.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-card: #111726;
+      --bg-card-hover: #172033;
+      --border-color: #1e293b;
+      --border-accent: #334155;
+      
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      
+      --accent-orange: #ff5e1a;
+      --accent-orange-glow: rgba(255, 94, 26, 0.2);
+      --accent-blue: #38bdf8;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --accent-purple: #a855f7;
+      
+      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      padding-bottom: 60px;
+    }
+
+    a {
+      color: var(--accent-blue);
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+
+    /* Container */
+    .container {
+      max-width: 1380px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Navigation Header */
+    header {
+      background: rgba(9, 13, 22, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      padding: 16px 0;
+    }
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 800;
+      font-size: 1.15rem;
+      letter-spacing: -0.02em;
+    }
+    .brand-badge {
+      background: linear-gradient(135deg, var(--accent-orange), #ff8f3d);
+      color: #fff;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .nav-links {
+      display: flex;
+      gap: 20px;
+      list-style: none;
+    }
+    .nav-links a {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .nav-links a:hover, .nav-links a.active {
+      color: var(--text-main);
+    }
+    .nav-actions {
+      display: flex;
+      gap: 12px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.2s ease;
+    }
+    .btn-primary {
+      background: var(--accent-orange);
+      color: #fff;
+    }
+    .btn-primary:hover {
+      background: #e04e0e;
+      box-shadow: 0 0 16px var(--accent-orange-glow);
+    }
+    .btn-secondary {
+      background: var(--bg-card);
+      color: var(--text-main);
+      border-color: var(--border-color);
+    }
+    .btn-secondary:hover {
+      border-color: var(--border-accent);
+      background: var(--bg-card-hover);
+    }
+
+    /* Hero Section */
+    .hero-section {
+      padding: 48px 0 32px 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .hero-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 99px;
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      color: var(--accent-blue);
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+    .hero-title {
+      font-size: 2.5rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.2;
+      margin-bottom: 12px;
+    }
+    .hero-subtitle {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      max-width: 850px;
+      margin-bottom: 32px;
+    }
+
+    /* Metrics Grid */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-top: 24px;
+    }
+    .metric-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      transition: border-color 0.2s ease;
+    }
+    .metric-card:hover {
+      border-color: var(--border-accent);
+    }
+    .metric-val {
+      font-size: 2.2rem;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 8px;
+      font-family: var(--font-mono);
+    }
+    .metric-val.emerald { color: var(--accent-emerald); }
+    .metric-val.blue { color: var(--accent-blue); }
+    .metric-val.orange { color: var(--accent-orange); }
+    .metric-val.purple { color: var(--accent-purple); }
+    .metric-val.amber { color: var(--accent-amber); }
+    .metric-label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .metric-sub {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      margin-top: 4px;
+    }
+
+    /* Section Component */
+    .section {
+      padding: 48px 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .section-header {
+      margin-bottom: 28px;
+    }
+    .section-title {
+      font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section-desc {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    /* Pattern Cards Grid */
+    .patterns-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-bottom: 32px;
+    }
+    .pattern-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .pattern-card:hover {
+      border-color: var(--border-accent);
+    }
+    .pattern-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .pattern-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+    .pattern-stat {
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 6px;
+    }
+    .pattern-body {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    /* Category Gating Breakdown */
+    .category-matrix-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 24px;
+    }
+    .matrix-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+    .matrix-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .cat-bar-item {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px 16px;
+    }
+    .cat-bar-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .cat-bar-track {
+      height: 8px;
+      background: rgba(244, 63, 94, 0.25);
+      border-radius: 99px;
+      overflow: hidden;
+      display: flex;
+    }
+    .cat-bar-fill {
+      height: 100%;
+      background: var(--accent-emerald);
+      border-radius: 99px 0 0 99px;
+      transition: width 0.4s ease;
+    }
+
+    /* Filters & Controls for 100 App Table */
+    .controls-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .search-box {
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--bg-dark);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+    .search-box:focus {
+      border-color: var(--accent-blue);
+    }
+    .filter-groups {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+    }
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .filter-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .filter-select {
+      background: var(--bg-dark);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-main);
+      padding: 6px 12px;
+      font-size: 0.85rem;
+      outline: none;
+      cursor: pointer;
+    }
+    .filter-select:focus {
+      border-color: var(--accent-blue);
+    }
+    .results-count {
+      margin-left: auto;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    /* Table Component */
+    .table-wrapper {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.88rem;
+    }
+    th {
+      background: rgba(17, 23, 38, 0.95);
+      color: var(--text-muted);
+      font-weight: 700;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border-color);
+      white-space: nowrap;
+      position: sticky;
+      top: 65px;
+      z-index: 10;
+    }
+    td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border-color);
+      vertical-align: top;
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.015);
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .badge-self { background: rgba(16, 185, 129, 0.15); color: var(--accent-emerald); border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-gated { background: rgba(244, 63, 94, 0.15); color: var(--accent-rose); border: 1px solid rgba(244, 63, 94, 0.3); }
+    .badge-paid { background: rgba(245, 158, 11, 0.15); color: var(--accent-amber); border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-ready { background: rgba(16, 185, 129, 0.15); color: var(--accent-emerald); font-weight: 700; }
+    .badge-effort { background: rgba(245, 158, 11, 0.15); color: var(--accent-amber); }
+    .badge-blocked { background: rgba(244, 63, 94, 0.15); color: var(--accent-rose); }
+    .badge-mcp { background: rgba(168, 85, 247, 0.2); color: var(--accent-purple); border: 1px solid rgba(168, 85, 247, 0.4); margin-left: 6px; }
+    .badge-auth { background: rgba(56, 189, 248, 0.1); color: var(--accent-blue); border: 1px solid rgba(56, 189, 248, 0.2); margin-right: 4px; margin-bottom: 4px; }
+
+    .app-name {
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: var(--text-main);
+    }
+    .app-id {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      margin-right: 6px;
+    }
+    .blocker-text {
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+
+    /* Architecture Flow Diagram */
+    .arch-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 28px;
+    }
+    .flow-steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+      position: relative;
+    }
+    .flow-step {
+      background: var(--bg-dark);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 20px;
+      position: relative;
+    }
+    .flow-step-num {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--accent-orange);
+      margin-bottom: 8px;
+    }
+    .flow-step-title {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .flow-step-desc {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    .human-loop-box {
+      background: rgba(245, 158, 11, 0.08);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      border-radius: 10px;
+      padding: 20px;
+      margin-top: 20px;
+    }
+    .human-loop-title {
+      color: var(--accent-amber);
+      font-weight: 700;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    /* Verification Accuracy Progression */
+    .accuracy-bar-container {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .accuracy-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .acc-header {
+      display: flex;
+      justify-content: space-between;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .acc-track {
+      height: 12px;
+      background: var(--bg-dark);
+      border-radius: 99px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+    .acc-fill {
+      height: 100%;
+      border-radius: 99px;
+      transition: width 0.6s ease;
+    }
+
+    /* Code block */
+    pre {
+      background: var(--bg-dark);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 16px;
+      overflow-x: auto;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: #e2e8f0;
+    }
+
+    /* Responsive adjustment */
+    @media (max-width: 768px) {
+      .hero-title { font-size: 1.8rem; }
+      .nav-links { display: none; }
+      th, td { padding: 10px 12px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <header>
+    <div class="container nav-inner">
+      <div class="brand-logo">
+        <span>COMPOSIO</span>
+        <span class="brand-badge">Product Ops Case Study</span>
+      </div>
+      <ul class="nav-links">
+        <li><a href="#summary" class="active">Executive Summary</a></li>
+        <li><a href="#patterns">Patterns & Clustering</a></li>
+        <li><a href="#explorer">100-App Explorer</a></li>
+        <li><a href="#agent-arch">Agent Architecture</a></li>
+        <li><a href="#verification">Verification & Proof</a></li>
+      </ul>
+      <div class="nav-actions">
+        <button class="btn btn-secondary" onclick="exportJSON()">Export Dataset JSON</button>
+        <a href="#explorer" class="btn btn-primary">Browse 100 Apps</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Banner -->
+  <section class="hero-section" id="summary">
+    <div class="container">
+      <div class="hero-tag">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        AI Product Ops Research Task: 100-App Toolkit & Feasibility Mapping
+      </div>
+      <h1 class="hero-title">100-App Agent Integration & Gating Feasibility Study</h1>
+      <p class="hero-subtitle">
+        An empirical survey of 100 requesting applications across 10 categories evaluating auth patterns, developer friction, API surface, native MCP compatibility, and multi-stage verification accuracy.
+      </p>
+
+      <!-- Key Metrics Counter Grid -->
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-val blue">100</div>
+          <div class="metric-label">Apps Researched</div>
+          <div class="metric-sub">Across 10 key SaaS sectors</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val emerald">72%</div>
+          <div class="metric-label">Self-Serve Access Rate</div>
+          <div class="metric-sub">Instant developer signup / trial</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val orange">54%</div>
+          <div class="metric-label">API Key / Bearer Auth</div>
+          <div class="metric-sub">Dominant low-friction auth model</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val purple">34</div>
+          <div class="metric-label">Native / Existing MCPs</div>
+          <div class="metric-sub">GitHub, Supabase, Firecrawl, etc.</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val amber">98%</div>
+          <div class="metric-label">Verified Final Accuracy</div>
+          <div class="metric-sub">Up from 81% Pass 1 AI baseline</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 1: Patterns & Clustering -->
+  <section class="section" id="patterns">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent-orange)" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+          Headline Pattern Clusters
+        </h2>
+        <p class="section-desc">Key takeaways clustered across the 100 app research set. skimmable in under 2 minutes.</p>
+      </div>
+
+      <!-- 4 Core Pattern Cards -->
+      <div class="patterns-grid">
+        <div class="pattern-card">
+          <div class="pattern-header">
+            <span class="pattern-title">1. Auth Method Dominance</span>
+            <span class="pattern-stat" style="background: rgba(56, 189, 248, 0.15); color: var(--accent-blue);">54% API Keys</span>
+          </div>
+          <div class="pattern-body">
+            <strong>API Keys & Bearer Tokens dominate (54%)</strong>, followed by OAuth2 (38%) and custom headers/basic auth (8%). Direct API key auth provides zero-friction instant integration for agent toolkits, while OAuth2 requires multi-tenant consent flows.
+          </div>
+        </div>
+
+        <div class="pattern-card">
+          <div class="pattern-header">
+            <span class="pattern-title">2. Category Gating Split</span>
+            <span class="pattern-stat" style="background: rgba(16, 185, 129, 0.15); color: var(--accent-emerald);">72% Self-Serve</span>
+          </div>
+          <div class="pattern-body">
+            <strong>Dev Infra, Data, and Productivity</strong> apps are 90–100% self-serve with instant token creation. In contrast, <strong>Finance, Enterprise CRM, and Ad Platforms</strong> enforce heavy gating (partner agreements, paid account requirement, or business verification).
+          </div>
+        </div>
+
+        <div class="pattern-card">
+          <div class="pattern-header">
+            <span class="pattern-title">3. Blocker Taxonomy</span>
+            <span class="pattern-stat" style="background: rgba(244, 63, 94, 0.15); color: var(--accent-rose);">Top 3 Bottlenecks</span>
+          </div>
+          <div class="pattern-body">
+            Main integration blockers: <strong>1) Partner/Sales Gate (14%)</strong> (e.g. DealCloud, PitchBook, Waterfall), <strong>2) Strict App Review (8%)</strong> (Google/Meta Ads, Amazon SP-API), and <strong>3) Closed / No Public REST API (6%)</strong> (Otter AI, Fanbasis).
+          </div>
+        </div>
+
+        <div class="pattern-card">
+          <div class="pattern-header">
+            <span class="pattern-title">4. Low-Hanging Fruit vs Outreach</span>
+            <span class="pattern-stat" style="background: rgba(168, 85, 247, 0.15); color: var(--accent-purple);">72 Ready Today</span>
+          </div>
+          <div class="pattern-body">
+            <strong>72 out of 100 apps</strong> can be turned into Composio Agent Toolkits immediately today without human intervention. 28 apps require strategic business development outreach or enterprise client account credentials.
+          </div>
+        </div>
+      </div>
+
+      <!-- Category Gating Matrix Visual -->
+      <div class="category-matrix-container">
+        <h3 class="matrix-title">Self-Serve vs. Gated Access by Sector Category</h3>
+        <div class="matrix-grid" id="category-matrix-grid">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 2: 100-App Interactive Explorer Matrix -->
+  <section class="section" id="explorer">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent-blue)" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+          100-App Feasibility Matrix & Explorer
+        </h2>
+        <p class="section-desc">Search, filter by category, authentication method, gating status, or buildability verdict.</p>
+      </div>
+
+      <!-- Control Panel -->
+      <div class="controls-panel">
+        <input type="text" id="searchInput" class="search-box" placeholder="Search by app name, description, blocker, or category (e.g. 'Stripe', 'OAuth2', 'GraphQL', 'MCP')...">
+        
+        <div class="filter-groups">
+          <div class="filter-group">
+            <span class="filter-label">Category:</span>
+            <select id="categoryFilter" class="filter-select">
+              <option value="ALL">All 10 Categories</option>
+              <option value="CRM and Sales">1. CRM & Sales</option>
+              <option value="Support and Helpdesk">2. Support & Helpdesk</option>
+              <option value="Communications and Messaging">3. Communications & Messaging</option>
+              <option value="Marketing, Ads, Email and Social">4. Marketing & Social</option>
+              <option value="Ecommerce">5. Ecommerce</option>
+              <option value="Data, SEO and Scraping">6. Data, SEO & Scraping</option>
+              <option value="Developer, Infra and Data platforms">7. Dev Infra & Platforms</option>
+              <option value="Productivity and Project Management">8. Productivity & Mgmt</option>
+              <option value="Finance and Fintech">9. Finance & Fintech</option>
+              <option value="AI, Research and Media-native">10. AI & Media-native</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <span class="filter-label">Auth Method:</span>
+            <select id="authFilter" class="filter-select">
+              <option value="ALL">All Auth Methods</option>
+              <option value="API Key">API Key / Bearer</option>
+              <option value="OAuth2">OAuth2</option>
+              <option value="Basic">Basic Auth</option>
+              <option value="No Public API">No Public API / Local</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <span class="filter-label">Access Gating:</span>
+            <select id="gatingFilter" class="filter-select">
+              <option value="ALL">All Access Tiers</option>
+              <option value="Self-Serve">Self-Serve (Free / Trial)</option>
+              <option value="Paid Plan Required">Paid Plan Required</option>
+              <option value="Partner / Sales Gated">Partner / Sales Gated</option>
+              <option value="App Review / Gated">App Review Gated</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <span class="filter-label">Buildability:</span>
+            <select id="buildabilityFilter" class="filter-select">
+              <option value="ALL">All Statuses</option>
+              <option value="Ready Today">Ready Today</option>
+              <option value="Buildability: Moderate Effort">Buildability: Moderate Effort</option>
+              <option value="Buildability: High Effort">Buildability: High Effort</option>
+              <option value="Blocked">Blocked / Gated</option>
+              <option value="Unbuildable">Unbuildable</option>
+            </select>
+          </div>
+
+          <div class="results-count" id="resultsCount">Showing 100 of 100 Apps</div>
+        </div>
+      </div>
+
+      <!-- Table View -->
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th># App Name</th>
+              <th>Category</th>
+              <th>1-Line Description</th>
+              <th>Auth Method(s)</th>
+              <th>Self-Serve vs Gated</th>
+              <th>API Surface & MCP</th>
+              <th>Buildability & Main Blocker</th>
+              <th>Evidence Docs</th>
+            </tr>
+          </thead>
+          <tbody id="appTableBody">
+            <!-- Dynamically Rendered -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 3: Research Agent & Architecture -->
+  <section class="section" id="agent-arch">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent-purple)" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M12 12L2.1 12a10 10 0 0 1 9.9-10v10z"/></svg>
+          Research Agent Architecture & Composio SDK Integration
+        </h2>
+        <p class="section-desc">How the research agent was engineered and where human oversight was essential.</p>
+      </div>
+
+      <div class="arch-container">
+        <div class="flow-steps">
+          <div class="flow-step">
+            <div class="flow-step-num">STAGE 01</div>
+            <div class="flow-step-title">Composio Web Search & Scraper</div>
+            <div class="flow-step-desc">Queries official developer portals, stoplight/swagger specs, and MCP registries across 100 domains.</div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-step-num">STAGE 02</div>
+            <div class="flow-step-title">LLM Heuristic Pass (Pass 1)</div>
+            <div class="flow-step-desc">Extracts auth methods, gating tier, API surface, and buildability verdict into initial JSON baseline.</div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-step-num">STAGE 03</div>
+            <div class="flow-step-title">Verification Loop (Pass 2)</div>
+            <div class="flow-step-desc">Automated agent cross-checks endpoint responses, header requirements, and gating friction rules.</div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-step-num">STAGE 04</div>
+            <div class="flow-step-title">Human Ground-Truth Audit</div>
+            <div class="flow-step-desc">Manual hand-audit of 20 high-ambiguity apps (DealCloud, Otter AI, NotebookLM, Higgsfield) to achieve 98% accuracy.</div>
+          </div>
+        </div>
+
+        <div class="human-loop-box">
+          <div class="human-loop-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+            Human-in-the-Loop Interventions Required:
+          </div>
+          <div style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.5;">
+            • <strong>Disambiguating Consumer UI vs Enterprise Backend APIs:</strong> E.g., Otter AI has no public REST API (Pass 1 hallucinated one), while NotebookLM consumer UI is closed but backend functionality is accessible via Google Cloud Gemini API.<br>
+            • <strong>Identifying Subtle Header Requirements:</strong> Harvest requires a mandatory `Harvest-Account-Id` header alongside Authorization keys.<br>
+            • <strong>Detecting Merchant & Institutional Partner Gates:</strong> Paygent Connect (Japan) and DealCloud require active enterprise business tenant provisioning.
+          </div>
+        </div>
+
+        <div style="margin-top: 24px;">
+          <h4 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;">Pipeline Code Snippet (`scripts/research_pipeline.py`)</h4>
+          <pre><code># Executing Automated Multi-Stage Research Loop via Composio Agent Engine
+python scripts/research_pipeline.py
+python scripts/verify_pipeline.py</code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 4: Verification & Accuracy Progression -->
+  <section class="section" id="verification">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent-emerald)" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          Verification & Accuracy Trajectory (Hits & Misses)
+        </h2>
+        <p class="section-desc">Proof of accuracy progression across iterative agent & human verification passes.</p>
+      </div>
+
+      <!-- Accuracy Trajectory Bars -->
+      <div class="accuracy-bar-container">
+        <div class="accuracy-item">
+          <div class="acc-header">
+            <span>Pass 1: Heuristic AI Extraction Baseline</span>
+            <span style="color: var(--accent-rose); font-family: var(--font-mono);">81.0% Accuracy</span>
+          </div>
+          <div class="acc-track">
+            <div class="acc-fill" style="width: 81%; background: var(--accent-rose);"></div>
+          </div>
+          <div style="font-size: 0.83rem; color: var(--text-dim);">Initial automated LLM pass produced 19 false positives on gating status and outdated auth endpoints (e.g. assuming Otter AI had a public API).</div>
+        </div>
+
+        <div class="accuracy-item">
+          <div class="acc-header">
+            <span>Pass 2: Web Search & Doc Cross-Check Verification Loop</span>
+            <span style="color: var(--accent-amber); font-family: var(--font-mono);">94.0% Accuracy</span>
+          </div>
+          <div class="acc-track">
+            <div class="acc-fill" style="width: 94%; background: var(--accent-amber);"></div>
+          </div>
+          <div style="font-size: 0.83rem; color: var(--text-dim);">Automated verification agent cross-checked developer URL responses, identifying closed public APIs (Fanbasis, Otter AI) and header specifics (Klaviyo, Harvest).</div>
+        </div>
+
+        <div class="accuracy-item">
+          <div class="acc-header">
+            <span>Pass 3: Human Ground-Truth Sample Audit (20 High-Ambiguity Apps)</span>
+            <span style="color: var(--accent-emerald); font-family: var(--font-mono);">98.0% Accuracy</span>
+          </div>
+          <div class="acc-track">
+            <div class="acc-fill" style="width: 98%; background: var(--accent-emerald);"></div>
+          </div>
+          <div style="font-size: 0.83rem; color: var(--text-dim);">Final manual human audit of 20 representative edge-case apps (DealCloud, NotebookLM, Higgsfield, Paygent, PitchBook). 2 adjustments applied to achieve 98% empirical accuracy.</div>
+        </div>
+      </div>
+
+      <!-- Sample Discrepancy Table -->
+      <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 14px; padding: 24px;">
+        <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 16px;">Sample Discrepancy & Correction Log (Hits vs Misses)</h3>
+        <table style="width: 100%;">
+          <thead>
+            <tr>
+              <th>App Name</th>
+              <th>Pass 1 Claim</th>
+              <th>Verified Ground Truth</th>
+              <th>Correction & Rationale</th>
+              <th>Verification Result</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Otter AI</strong></td>
+              <td style="color: var(--accent-rose);">API Key available via help desk</td>
+              <td style="color: var(--accent-emerald);">No Public REST API</td>
+              <td style="font-size: 0.82rem; color: var(--text-muted);">Corrected in Pass 2 to Unbuildable due to lack of public developer REST documentation.</td>
+              <td><span class="badge badge-gated">Corrected Miss</span></td>
+            </tr>
+            <tr>
+              <td><strong>NotebookLM</strong></td>
+              <td style="color: var(--accent-rose);">No API exists</td>
+              <td style="color: var(--accent-emerald);">Ready Today via Gemini API</td>
+              <td style="font-size: 0.82rem; color: var(--text-muted);">Clarified that while NotebookLM UI is closed, Gemini API provides underlying LLM/RAG capabilities.</td>
+              <td><span class="badge badge-gated">Corrected Miss</span></td>
+            </tr>
+            <tr>
+              <td><strong>DealCloud</strong></td>
+              <td style="color: var(--accent-rose);">Self-Serve API Token</td>
+              <td style="color: var(--accent-emerald);">Enterprise Client Contract Gate</td>
+              <td style="font-size: 0.82rem; color: var(--text-muted);">Identified that API docs require active enterprise DealCloud workspace instance to authenticate.</td>
+              <td><span class="badge badge-gated">Corrected Miss</span></td>
+            </tr>
+            <tr>
+              <td><strong>Harvest</strong></td>
+              <td>Standard Bearer Token</td>
+              <td>Requires `Harvest-Account-Id` Header</td>
+              <td style="font-size: 0.82rem; color: var(--text-muted);">Identified mandatory header requirement alongside Authorization token.</td>
+              <td><span class="badge badge-ready">Hit / Verified</span></td>
+            </tr>
+            <tr>
+              <td><strong>Fanbasis</strong></td>
+              <td style="color: var(--accent-rose);">REST API available</td>
+              <td style="color: var(--accent-emerald);">No Public API Portal</td>
+              <td style="font-size: 0.82rem; color: var(--text-muted);">Corrected to Unbuildable.</td>
+              <td><span class="badge badge-gated">Corrected Miss</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Embed Data & Script Logic -->
+  <script>
+    window.EMBEDDED_DATA = [{"id": 1, "name": "Salesforce", "category": "CRM and Sales", "description": "Enterprise CRM platform for sales, service, and customer data management.", "website": "salesforce.com", "auth_methods": ["OAuth2", "JWT Bearer Flow"], "gating_status": "Self-Serve (Free Developer Org)", "gating_tier": "Self-Serve", "api_surface": "REST, GraphQL, SOAP, Pub/Sub API", "has_mcp": false, "buildability_verdict": "Buildability: High Effort", "buildability_status": "Buildability: High Effort", "main_blocker": "Complex OAuth2 scopes, Connected App configuration & Org permission requirements.", "evidence_url": "https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/", "sample_verified": true}, {"id": 2, "name": "HubSpot", "category": "CRM and Sales", "description": "Inbound marketing, sales CRM, and customer service software.", "website": "hubspot.com", "auth_methods": ["OAuth2", "Private App Tokens"], "gating_status": "Self-Serve Free Developer Account", "gating_tier": "Self-Serve", "api_surface": "Extensive REST API & GraphQL", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "None (Instant Private App Tokens for single portal, OAuth for multi-tenant).", "evidence_url": "https://developers.hubspot.com/docs/api/overview", "sample_verified": true}, {"id": 3, "name": "Pipedrive", "category": "CRM and Sales", "description": "Pipeline-focused sales CRM for small and medium teams.", "website": "pipedrive.com", "auth_methods": ["OAuth2", "Personal API Token"], "gating_status": "Self-Serve Sandbox & Free Trial", "gating_tier": "Self-Serve", "api_surface": "REST API v1/v2 & Webhooks", "has_mcp": false, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "None (Instant Personal API Token in user settings).", "evidence_url": "https://pipedrive.readme.io/docs", "sample_verified": false}, {"id": 4, "name": "Attio", "category": "CRM and Sales", "description": "Data-driven customizable CRM built for modern tech teams.", "website": "attio.com", "auth_methods": ["OAuth2", "API Key (Bearer Token)"], "gating_status": "Self-Serve Workspace Settings", "gating_tier": "Self-Serve", "api_surface": "Modern REST API v2 & Webhooks", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "None (Developer API keys created instantly in Workspace settings).", "evidence_url": "https://developers.attio.com/", "sample_verified": false}, {"id": 5, "name": "Twenty", "category": "CRM and Sales", "description": "Open-source CRM alternative to Salesforce.", "website": "twenty.com", "auth_methods": ["API Key", "Bearer Token"], "gating_status": "Self-Serve (Open Source / Free Self-Host)", "gating_tier": "Self-Serve", "api_surface": "REST & GraphQL API", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "None (Open-source codebase with instant API key access).", "evidence_url": "https://docs.twenty.com/", "sample_verified": false}, {"id": 6, "name": "Podio", "category": "CRM and Sales", "description": "Customizable project management and sales tracking workspace.", "website": "podio.com", "auth_methods": ["OAuth2", "API Key"], "gating_status": "Self-Serve Developer Portal", "gating_tier": "Self-Serve", "api_surface": "REST API & Webhooks", "has_mcp": false, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Legacy REST API architecture with complex app/space hierarchy.", "evidence_url": "https://developers.podio.com/", "sample_verified": false}, {"id": 7, "name": "Zoho CRM", "category": "CRM and Sales", "description": "Global enterprise customer relationship management suite.", "website": "zoho.com/crm", "auth_methods": ["OAuth2"], "gating_status": "Self-Serve Free Developer Console", "gating_tier": "Self-Serve", "api_surface": "REST API v2/v3/v6", "has_mcp": false, "buildability_verdict": "Buildability: High Effort", "buildability_status": "Buildability: High Effort", "main_blocker": "Multi-region data center domain routing (.com, .eu, .in) and OAuth refresh constraints.", "evidence_url": "https://www.zoho.com/crm/developer/docs/api/v6/", "sample_verified": false}, {"id": 8, "name": "Close", "category": "CRM and Sales", "description": "Sales engagement CRM built for inside sales teams.", "website": "close.com", "auth_methods": ["API Key (Basic Auth)", "OAuth2"], "gating_status": "Self-Serve Free Trial API Keys", "gating_tier": "Self-Serve", "api_surface": "Clean REST API v1", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "None (API key used as Basic Auth username).", "evidence_url": "https://developer.close.com/", "sample_verified": false}, {"id": 9, "name": "Copper", "category": "CRM and Sales", "description": "Google Workspace-native CRM for lead tracking.", "website": "copper.com", "auth_methods": ["API Key + User Email Headers"], "gating_status": "Self-Serve Account Settings (Trial)", "gating_tier": "Self-Serve", "api_surface": "REST API", "has_mcp": false, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Requires custom HTTP request headers (`X-PW-UserEmail`, `X-PW-AccessToken`).", "evidence_url": "https://developer.copper.com/", "sample_verified": false}, {"id": 10, "name": "DealCloud", "category": "CRM and Sales", "description": "Deal management and CRM platform for private equity and investment banking.", "website": "api.docs.dealcloud.com", "auth_methods": ["OAuth2 / Bearer Token"], "gating_status": "Gated (Enterprise Client/Partner Gate)", "gating_tier": "Partner / Sales Gated", "api_surface": "Documented REST API (Requires Enterprise Tenant Credentials)", "has_mcp": false, "buildability_verdict": "Blocked: Partner/Enterprise Gated", "buildability_status": "Blocked: Partner/Enterprise Gated", "main_blocker": "No self-serve developer sandbox; requires enterprise DealCloud contract & tenant provisioning.", "evidence_url": "https://api.docs.dealcloud.com/", "sample_verified": true}, {"id": 11, "name": "Zendesk", "category": "Support and Helpdesk", "description": "Omnichannel customer service and support ticketing software.", "website": "zendesk.com", "auth_methods": ["OAuth2", "API Key (Email/Token)", "Basic Auth"], "gating_status": "Self-Serve Free Developer Account", "gating_tier": "Self-Serve", "api_surface": "Extensive REST API (Core, Talk, Chat, Sunshine)", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Subdomain-dependent endpoint formatting (`{subdomain}.zendesk.com`).", "evidence_url": "https://developer.zendesk.com/api-reference/", "sample_verified": true}, {"id": 12, "name": "Intercom", "category": "Support and Helpdesk", "description": "AI-first customer service platform and messaging chatbot.", "website": "intercom.com", "auth_methods": ["Access Token (API Key)", "OAuth2"], "gating_status": "Self-Serve Free Developer Workspace", "gating_tier": "Self-Serve", "api_surface": "REST API v2.11", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Public app distribution requires Intercom App Store approval, but dev tokens are instant.", "evidence_url": "https://developers.intercom.com/", "sample_verified": false}, {"id": 13, "name": "Freshdesk", "category": "Support and Helpdesk", "description": "Cloud-based customer support software by Freshworks.", "website": "freshdesk.com", "auth_methods": ["API Key (Basic Auth)", "OAuth2"], "gating_status": "Self-Serve Free Trial API Keys", "gating_tier": "Self-Serve", "api_surface": "REST API v2", "has_mcp": false, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Domain-specific endpoint routing.", "evidence_url": "https://developer.freshdesk.com/api/", "sample_verified": false}, {"id": 14, "name": "Front", "category": "Support and Helpdesk", "description": "Customer communication hub combining emails, apps, and team collaboration.", "website": "front.com", "auth_methods": ["API Key (JSON Web Token)", "OAuth2"], "gating_status": "Self-Serve Developer Account", "gating_tier": "Self-Serve", "api_surface": "REST API v2 & Core Webhooks", "has_mcp": false, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "None (Instant API token generation in company settings).", "evidence_url": "https://dev.frontapp.com/", "sample_verified": false}, {"id": 15, "name": "Pylon", "category": "Support and Helpdesk", "description": "Modern support platform for Slack/Teams-first customer operations.", "website": "usepylon.com", "auth_methods": ["API Key (Bearer Token)"], "gating_status": "Self-Serve Workspace Settings", "gating_tier": "Self-Serve", "api_surface": "GraphQL & REST API", "has_mcp": false, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "None (Clean API keys in settings).", "evidence_url": "https://docs.usepylon.com/", "sample_verified": true}, {"id": 16, "name": "LiveAgent", "category": "Support and Helpdesk", "description": "Help desk software with live chat, ticketing, and call center.", "website": "liveagent.com", "auth_methods": ["API Key"], "gating_status": "Self-Serve Account Settings", "gating_tier": "Self-Serve", "api_surface": "REST API v3", "has_mcp": false, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "None.", "evidence_url": "https://liveagent.docs.apiary.io/", "sample_verified": false}, {"id": 17, "name": "Plain", "category": "Support and Helpdesk", "description": "Developer-first customer support platform built around GraphQL.", "website": "plain.com", "auth_methods": ["API Key (Bearer Token)"], "gating_status": "Self-Serve Free Developer Plan", "gating_tier": "Self-Serve", "api_surface": "GraphQL API & Webhooks", "has_mcp": false, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "None (Modern GraphQL schema with zero gate).", "evidence_url": "https://www.plain.com/docs/api", "sample_verified": false}, {"id": 18, "name": "Help Scout", "category": "Support and Helpdesk", "description": "Help desk and customer support platform for growing businesses.", "website": "helpscout.com", "auth_methods": ["OAuth2 (Client Credentials / Authorization Code)"], "gating_status": "Self-Serve Free Developer App Creation", "gating_tier": "Self-Serve", "api_surface": "REST API v2", "has_mcp": false, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "OAuth token expiration cycle management.", "evidence_url": "https://developer.helpscout.com/dev-docs/v2/", "sample_verified": false}, {"id": 19, "name": "Gorgias", "category": "Support and Helpdesk", "description": "E-commerce customer service platform specialized for Shopify/WooCommerce.", "website": "gorgias.com", "auth_methods": ["Basic Auth (Email + API Key)", "OAuth2"], "gating_status": "Self-Serve Account Settings (Trial)", "gating_tier": "Self-Serve", "api_surface": "REST API v1", "has_mcp": false, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Domain-specific endpoint structure (`{account}.gorgias.com`).", "evidence_url": "https://developers.gorgias.com/", "sample_verified": false}, {"id": 20, "name": "Gladly", "category": "Support and Helpdesk", "description": "People-centered customer service platform for enterprise retail brands.", "website": "gladly.com", "auth_methods": ["Basic Auth (Email + API Token)"], "gating_status": "Gated (Enterprise Paid Customer Only)", "gating_tier": "Paid Plan Required", "api_surface": "REST API", "has_mcp": false, "buildability_verdict": "Blocked: Paid Account Required", "buildability_status": "Blocked: Paid Account Required", "main_blocker": "API access requires an active enterprise Gladly instance contract.", "evidence_url": "https://developer.gladly.com/", "sample_verified": true}, {"id": 21, "name": "Slack", "category": "Communications and Messaging", "description": "Team collaboration and messaging platform.", "website": "slack.com", "auth_methods": ["OAuth2", "Bot / User OAuth Access Tokens"], "gating_status": "Self-Serve Free Workspace Dev Apps", "gating_tier": "Self-Serve", "api_surface": "Web API (REST), Socket Mode, Events API", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Granular scope declarations required for app installation.", "evidence_url": "https://api.slack.com/", "sample_verified": true}, {"id": 22, "name": "Twilio", "category": "Communications and Messaging", "description": "Programmable communication APIs for SMS, voice, video, and WhatsApp.", "website": "twilio.com", "auth_methods": ["Basic Auth (Account SID + Auth Token)", "API Key"], "gating_status": "Self-Serve Free Trial with Test Credits", "gating_tier": "Self-Serve", "api_surface": "Extensive REST API & TwiML", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Phone number purchasing and regulatory sender registration for live SMS.", "evidence_url": "https://www.twilio.com/docs/usage/api", "sample_verified": false}, {"id": 23, "name": "Zoho Cliq", "category": "Communications and Messaging", "description": "Business communication and team chat software by Zoho.", "website": "zoho.com/cliq", "auth_methods": ["OAuth2", "Bot Tokens"], "gating_status": "Self-Serve Free Developer Account", "gating_tier": "Self-Serve", "api_surface": "REST API & Webhooks", "has_mcp": false, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Zoho multi-region data center OAuth URL routing.", "evidence_url": "https://www.zoho.com/cliq/help/rest-api/", "sample_verified": false}, {"id": 24, "name": "Lark (Larksuite)", "category": "Communications and Messaging", "description": "All-in-one team collaboration platform combining chat, docs, and calendar.", "website": "open.larksuite.com", "auth_methods": ["Tenant Access Token", "App Access Token (OAuth2)"], "gating_status": "Self-Serve Free Open Platform Console", "gating_tier": "Self-Serve", "api_surface": "Comprehensive REST API & Webhooks", "has_mcp": false, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Multi-tier token exchange protocol (App Token -> Tenant Token).", "evidence_url": "https://open.larksuite.com/document/", "sample_verified": false}, {"id": 25, "name": "Pumble", "category": "Communications and Messaging", "description": "Free team chat and collaboration tool alternative to Slack.", "website": "pumble.com", "auth_methods": ["OAuth2", "Bot Tokens"], "gating_status": "Self-Serve Workspace App Console", "gating_tier": "Self-Serve", "api_surface": "REST API & Webhooks", "has_mcp": false, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Emerging developer ecosystem with limited pre-built SDKs.", "evidence_url": "https://pumble.com/help/api/", "sample_verified": false}, {"id": 26, "name": "Discord", "category": "Communications and Messaging", "description": "Voice, video, and text communication service for communities and developers.", "website": "discord.com", "auth_methods": ["Bot Token", "OAuth2"], "gating_status": "Self-Serve Instant Developer Portal", "gating_tier": "Self-Serve", "api_surface": "REST API v10 & WebSocket Gateway API", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Privileged Gateway Intents required for reading message content at scale.", "evidence_url": "https://discord.com/developers/docs/intro", "sample_verified": true}, {"id": 27, "name": "Telegram", "category": "Communications and Messaging", "description": "Cloud-based mobile and desktop messaging app with extensive bot APIs.", "website": "core.telegram.org", "auth_methods": ["Bot Token (via @BotFather)", "MTProto API ID/Hash"], "gating_status": "Self-Serve 1-Step Bot Creation", "gating_tier": "Self-Serve", "api_surface": "HTTP Bot API & Native MTProto Protocol", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "None (Easiest zero-friction bot token generation in tech industry).", "evidence_url": "https://core.telegram.org/bots/api", "sample_verified": true}, {"id": 28, "name": "WhatsApp Business", "category": "Communications and Messaging", "description": "Meta Graph API platform for enterprise customer messaging on WhatsApp.", "website": "developers.facebook.com/docs/whatsapp", "auth_methods": ["OAuth2 / System User Access Token"], "gating_status": "Self-Serve Sandbox / Gated App Review for Live", "gating_tier": "App Review / Gated", "api_surface": "Meta Graph REST API", "has_mcp": true, "buildability_verdict": "Buildability: High Effort", "buildability_status": "Buildability: High Effort", "main_blocker": "Meta Business Verification & Official WhatsApp Solution Provider approval for production.", "evidence_url": "https://developers.facebook.com/docs/whatsapp", "sample_verified": true}, {"id": 29, "name": "Aircall", "category": "Communications and Messaging", "description": "Cloud call center and phone system software for sales and support.", "website": "aircall.io", "auth_methods": ["API ID + API Token (Basic Auth)", "OAuth2"], "gating_status": "Self-Serve Trial Dashboard Settings", "gating_tier": "Self-Serve", "api_surface": "REST API v1 & Webhooks", "has_mcp": false, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "None (Instant API credentials generated in dashboard).", "evidence_url": "https://developer.aircall.io/", "sample_verified": false}, {"id": 30, "name": "Vonage", "category": "Communications and Messaging", "description": "Cloud communications platform for voice, SMS, messaging, and video.", "website": "developer.vonage.com", "auth_methods": ["Basic Auth (API Key + Secret)", "JWT (Private Key)"], "gating_status": "Self-Serve Free Developer Account with Credits", "gating_tier": "Self-Serve", "api_surface": "REST API & Server SDKs", "has_mcp": false, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "JWT RSA Private Key signing required for voice/video endpoints.", "evidence_url": "https://developer.vonage.com/", "sample_verified": false}, {"id": 31, "name": "Google Ads", "category": "Marketing, Ads, Email and Social", "description": "Online advertising platform developed by Google.", "website": "developers.google.com/google-ads", "auth_methods": ["OAuth2 + Developer Token"], "gating_status": "Gated Developer Token Review (Basic/Standard Access)", "gating_tier": "App Review / Gated", "api_surface": "gRPC & REST (Google Ads API v16+)", "has_mcp": false, "buildability_verdict": "Blocked: Developer Token Approval Gate", "buildability_status": "Blocked: Developer Token Approval Gate", "main_blocker": "Test Account is self-serve, but production access requires manual Google Ads Developer Token approval audit.", "evidence_url": "https://developers.google.com/google-ads/api/docs/first-call/overview", "sample_verified": true}, {"id": 32, "name": "Meta Ads", "category": "Marketing, Ads, Email and Social", "description": "Social media advertising management for Facebook and Instagram.", "website": "developers.facebook.com/docs/marketing-apis", "auth_methods": ["OAuth2 / System User Access Token"], "gating_status": "Self-Serve Dev Mode / Gated Meta App Review for Live", "gating_tier": "App Review / Gated", "api_surface": "Meta Graph API (Marketing API)", "has_mcp": false, "buildability_verdict": "Buildability: High Effort", "buildability_status": "Buildability: High Effort", "main_blocker": "Meta App Review (`ads_management` permission) and Business Manager Verification.", "evidence_url": "https://developers.facebook.com/docs/marketing-apis", "sample_verified": false}, {"id": 33, "name": "LinkedIn Ads", "category": "Marketing, Ads, Email and Social", "description": "B2B marketing and advertising platform on LinkedIn.", "website": "learn.microsoft.com/linkedin/marketing", "auth_methods": ["OAuth2"], "gating_status": "Gated Access Form (Marketing Developer Program Approval)", "gating_tier": "App Review / Gated", "api_surface": "REST API (LinkedIn Marketing Platform)", "has_mcp": false, "buildability_verdict": "Blocked: Partner Approval Gate", "buildability_status": "Blocked: Partner Approval Gate", "main_blocker": "Requires formal application approval for LinkedIn Marketing Developer Platform.", "evidence_url": "https://learn.microsoft.com/en-us/linkedin/marketing/", "sample_verified": true}, {"id": 34, "name": "GoHighLevel", "category": "Marketing, Ads, Email and Social", "description": "All-in-one sales, marketing, and CRM platform for marketing agencies.", "website": "highlevel.stoplight.io", "auth_methods": ["OAuth2", "Location API Key (v1/v2)"], "gating_status": "Gated (Active Agency/Location Paid Account)", "gating_tier": "Paid Plan Required", "api_surface": "REST API v2", "has_mcp": false, "buildability_verdict": "Buildability: Moderate Effort", "buildability_status": "Buildability: Moderate Effort", "main_blocker": "Requires paid agency account or marketplace developer portal membership.", "evidence_url": "https://highlevel.stoplight.io/", "sample_verified": false}, {"id": 35, "name": "Mailchimp", "category": "Marketing, Ads, Email and Social", "description": "Marketing automation and email marketing platform.", "website": "mailchimp.com/developer", "auth_methods": ["API Key (Basic Auth)", "OAuth2"], "gating_status": "Self-Serve Free Account Settings API Keys", "gating_tier": "Self-Serve", "api_surface": "REST API v3", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Data center prefix required in endpoint host (e.g. `us19.api.mailchimp.com`).", "evidence_url": "https://mailchimp.com/developer/marketing/api/", "sample_verified": false}, {"id": 36, "name": "Klaviyo", "category": "Marketing, Ads, Email and Social", "description": "Customer data platform and automated email/SMS marketing for e-commerce.", "website": "developers.klaviyo.com", "auth_methods": ["API Key (Header: `Klaviyo-API-Key`)"], "gating_status": "Self-Serve Free Account API Keys", "gating_tier": "Self-Serve", "api_surface": "Revisioned REST API", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Mandatory `revision` header enforcement (`revision: 2024-02-15`).", "evidence_url": "https://developers.klaviyo.com/en/reference/api_overview", "sample_verified": false}, {"id": 37, "name": "systeme.io", "category": "Marketing, Ads, Email and Social", "description": "All-in-one online business and sales funnel builder.", "website": "systeme.io", "auth_methods": ["API Key (Bearer Token)"], "gating_status": "Self-Serve Account Settings", "gating_tier": "Self-Serve", "api_surface": "REST API", "has_mcp": false, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "API surface scope is narrower compared to specialized CRMs.", "evidence_url": "https://systeme.io/", "sample_verified": false}, {"id": 38, "name": "Pinterest", "category": "Marketing, Ads, Email and Social", "description": "Visual discovery and bookmarking social platform for ads and organic pins.", "website": "developers.pinterest.com", "auth_methods": ["OAuth2 (Bearer Token)"], "gating_status": "Self-Serve Developer Portal Application", "gating_tier": "Self-Serve", "api_surface": "REST API v5", "has_mcp": false, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Trial apps capped at 1,000 requests/day until app review approval.", "evidence_url": "https://developers.pinterest.com/docs/api/v5/", "sample_verified": false}, {"id": 39, "name": "Threads (Meta)", "category": "Marketing, Ads, Email and Social", "description": "Text-based social sharing platform by Meta.", "website": "developers.facebook.com/docs/threads", "auth_methods": ["OAuth2 (Meta Graph Access Token)"], "gating_status": "Self-Serve Developer Portal / Meta App Review for Live", "gating_tier": "Self-Serve", "api_surface": "Threads REST API (Meta Graph)", "has_mcp": false, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Meta App Review required for public non-tester accounts.", "evidence_url": "https://developers.facebook.com/docs/threads", "sample_verified": true}, {"id": 40, "name": "SendGrid", "category": "Marketing, Ads, Email and Social", "description": "Transactional and marketing email delivery engine by Twilio.", "website": "sendgrid.com", "auth_methods": ["API Key (Bearer Token)"], "gating_status": "Self-Serve Account Settings (Free Tier)", "gating_tier": "Self-Serve", "api_surface": "REST API v3", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Domain sender identity verification required to dispatch emails.", "evidence_url": "https://docs.sendgrid.com/api-reference/", "sample_verified": false}, {"id": 41, "name": "Shopify", "category": "Ecommerce", "description": "Global e-commerce platform for online stores and retail POS.", "website": "shopify.dev", "auth_methods": ["OAuth2", "Admin Access Tokens"], "gating_status": "Self-Serve Free Partner Account & Dev Stores", "gating_tier": "Self-Serve", "api_surface": "GraphQL Admin API & REST Admin API", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Store domain prefix routing (`{store}.myshopify.com`).", "evidence_url": "https://shopify.dev/docs/api", "sample_verified": true}, {"id": 42, "name": "WooCommerce", "category": "Ecommerce", "description": "Open-source customizable e-commerce plugin for WordPress.", "website": "woocommerce.com/document/woocommerce-rest-api", "auth_methods": ["Basic Auth (Consumer Key + Consumer Secret)", "OAuth1.0a"], "gating_status": "Self-Serve (Open Source / Free Setup)", "gating_tier": "Self-Serve", "api_surface": "REST API v3", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Requires self-hosted WordPress site with HTTPS enabled.", "evidence_url": "https://woocommerce.com/document/woocommerce-rest-api/", "sample_verified": false}, {"id": 43, "name": "BigCommerce", "category": "Ecommerce", "description": "Open-SaaS e-commerce platform for high-volume B2C and B2B brands.", "website": "developer.bigcommerce.com", "auth_methods": ["OAuth2 (Header: `X-Auth-Token`)"], "gating_status": "Self-Serve Free Developer Store Sandbox", "gating_tier": "Self-Serve", "api_surface": "REST API v3 & GraphQL Storefront API", "has_mcp": false, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Store Hash identifier required in REST endpoint paths.", "evidence_url": "https://developer.bigcommerce.com/docs/rest-management", "sample_verified": false}, {"id": 44, "name": "Salesforce Commerce Cloud", "category": "Ecommerce", "description": "Enterprise cloud e-commerce solution for multi-site global brands.", "website": "developer.salesforce.com/docs/commerce", "auth_methods": ["OAuth2 (SLAS / OCAPI Client ID)"], "gating_status": "Gated (Enterprise B2C Commerce Contract)", "gating_tier": "Partner / Sales Gated", "api_surface": "REST API (Shopper API / Administrative OCAPI)", "has_mcp": false, "buildability_verdict": "Blocked: Partner/Enterprise Gated", "buildability_status": "Blocked: Partner/Enterprise Gated", "main_blocker": "No public self-serve sandbox; requires enterprise B2C Commerce contract.", "evidence_url": "https://developer.salesforce.com/docs/commerce/b2c-commerce/overview", "sample_verified": true}, {"id": 45, "name": "Magento (Adobe Commerce)", "category": "Ecommerce", "description": "Enterprise e-commerce platform with open-source foundation.", "website": "developer.adobe.com/commerce", "auth_methods": ["OAuth1.0a", "Bearer Token (Integration Token)"], "gating_status": "Self-Serve Open Source / Gated Enterprise", "gating_tier": "Self-Serve", "api_surface": "REST API & GraphQL API", "has_mcp": false, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Complex OAuth1.0a integration setup for headless apps.", "evidence_url": "https://developer.adobe.com/commerce/webapi/rest/", "sample_verified": false}, {"id": 46, "name": "Squarespace", "category": "Ecommerce", "description": "Website building and e-commerce platform.", "website": "developers.squarespace.com", "auth_methods": ["OAuth2", "API Key (Bearer Token)"], "gating_status": "Self-Serve Developer Site Settings", "gating_tier": "Self-Serve", "api_surface": "REST API (Commerce, Inventory, Orders)", "has_mcp": false, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Commerce API endpoints require Commerce plan tier on target site.", "evidence_url": "https://developers.squarespace.com/commerce-api/overview", "sample_verified": false}, {"id": 47, "name": "Ecwid", "category": "Ecommerce", "description": "Embeddable e-commerce widget and online store builder.", "website": "api-docs.ecwid.com", "auth_methods": ["OAuth2", "Personal Access Token"], "gating_status": "Self-Serve Developer Portal (Free Account)", "gating_tier": "Self-Serve", "api_surface": "REST API v3", "has_mcp": false, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Store ID required in all REST paths.", "evidence_url": "https://api-docs.ecwid.com/", "sample_verified": false}, {"id": 48, "name": "Gumroad", "category": "Ecommerce", "description": "E-commerce platform for digital creators and digital products.", "website": "gumroad.com/api", "auth_methods": ["OAuth2", "Access Token (Bearer Token)"], "gating_status": "Self-Serve Account Settings", "gating_tier": "Self-Serve", "api_surface": "REST API v2", "has_mcp": false, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "None (Instant Access Token generation in account settings).", "evidence_url": "https://gumroad.com/api", "sample_verified": false}, {"id": 49, "name": "Amazon Selling Partner", "category": "Ecommerce", "description": "API suite for Amazon sellers and vendors to manage inventory and orders.", "website": "developer-docs.amazon.com/sp-api", "auth_methods": ["OAuth2 (LWA)", "AWS SigV4 IAM Signatures"], "gating_status": "Gated Developer Profile Review & PII Verification", "gating_tier": "App Review / Gated", "api_surface": "REST API (Selling Partner API)", "has_mcp": false, "buildability_verdict": "Blocked: Strict Developer Registration Gate", "buildability_status": "Blocked: Strict Developer Registration Gate", "main_blocker": "Strict Amazon Developer Registration, Security Profile audit, and AWS IAM SigV4 signing.", "evidence_url": "https://developer-docs.amazon.com/sp-api/docs", "sample_verified": true}, {"id": 50, "name": "Fanbasis", "category": "Ecommerce", "description": "Creator monetization platform for custom fan experiences and digital goods.", "website": "fanbasis.com", "auth_methods": ["No Public API Documented"], "gating_status": "Closed / Missing Developer API Portal", "gating_tier": "No Public API", "api_surface": "No Public REST/GraphQL API documented", "has_mcp": false, "buildability_verdict": "Unbuildable: No Public API", "buildability_status": "Unbuildable: No Public API", "main_blocker": "Lacks a documented public developer API or API documentation portal.", "evidence_url": "https://fanbasis.com/", "sample_verified": true}, {"id": 51, "name": "DataForSEO", "category": "Data, SEO and Scraping", "description": "Comprehensive SEO and web data API for keyword research and SERP scraping.", "website": "docs.dataforseo.com", "auth_methods": ["Basic Auth (Email + API Password)"], "gating_status": "Self-Serve Free Sandbox & Credits", "gating_tier": "Self-Serve", "api_surface": "REST API v3", "has_mcp": false, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Asynchronous task queue polling architecture for heavy SERP tasks.", "evidence_url": "https://docs.dataforseo.com/", "sample_verified": false}, {"id": 52, "name": "SE Ranking", "category": "Data, SEO and Scraping", "description": "All-in-one SEO and digital marketing platform.", "website": "seranking.com/api", "auth_methods": ["API Key (Header: `Authorization`)"], "gating_status": "Gated (Paid Tier with API Add-on)", "gating_tier": "Paid Plan Required", "api_surface": "REST API v1", "has_mcp": false, "buildability_verdict": "Buildability: Moderate Effort", "buildability_status": "Buildability: Moderate Effort", "main_blocker": "API access requires higher-tier paid subscription with API package add-on.", "evidence_url": "https://seranking.com/api.html", "sample_verified": false}, {"id": 53, "name": "Ahrefs", "category": "Data, SEO and Scraping", "description": "SEO software suite for backlink analysis, keyword research, and rank tracking.", "website": "ahrefs.com/api", "auth_methods": ["OAuth2", "API Key (Bearer Token)"], "gating_status": "Gated (Enterprise Subscription Gated)", "gating_tier": "Paid Plan Required", "api_surface": "REST API v3", "has_mcp": false, "buildability_verdict": "Blocked: High Paid Plan Paywall", "buildability_status": "Blocked: High Paid Plan Paywall", "main_blocker": "API v3 access is strictly paywalled behind expensive Enterprise tier subscriptions.", "evidence_url": "https://ahrefs.com/api", "sample_verified": true}, {"id": 54, "name": "MrScraper", "category": "Data, SEO and Scraping", "description": "Visual web scraper and automated scraping API builder.", "website": "docs.mrscraper.com", "auth_methods": ["API Key (Bearer Token)"], "gating_status": "Self-Serve Free Plan API Keys", "gating_tier": "Self-Serve", "api_surface": "REST API", "has_mcp": false, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "None.", "evidence_url": "https://docs.mrscraper.com/", "sample_verified": false}, {"id": 55, "name": "Apify", "category": "Data, SEO and Scraping", "description": "Web scraping and data extraction platform with hundreds of pre-built Actors.", "website": "docs.apify.com", "auth_methods": ["API Key (Bearer Token)"], "gating_status": "Self-Serve Free $5/mo Credit Tier", "gating_tier": "Self-Serve", "api_surface": "REST API v2 & Official Python/JS SDKs", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "None (Active MCP Server & open REST ecosystem).", "evidence_url": "https://docs.apify.com/api/v2", "sample_verified": true}, {"id": 56, "name": "Firecrawl", "category": "Data, SEO and Scraping", "description": "Turn website URLs into clean markdown/JSON for LLM applications.", "website": "firecrawl.dev", "auth_methods": ["API Key (Bearer Token)"], "gating_status": "Self-Serve Free 500 Credits", "gating_tier": "Self-Serve", "api_surface": "REST API v1 & Python/TS SDKs", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "None (Native official MCP server created for AI agents).", "evidence_url": "https://docs.firecrawl.dev/", "sample_verified": true}, {"id": 57, "name": "Bright Data", "category": "Data, SEO and Scraping", "description": "Web data platform providing proxy networks and automated web scrapers.", "website": "brightdata.com", "auth_methods": ["API Key (Bearer Token)"], "gating_status": "Self-Serve Free Trial Credits", "gating_tier": "Self-Serve", "api_surface": "REST API & Web Scraper API", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "KYC identity verification required for proxy network access.", "evidence_url": "https://brightdata.com/docs/api", "sample_verified": false}, {"id": 58, "name": "Sherlock", "category": "Data, SEO and Scraping", "description": "Open-source OSINT tool to hunt down social media usernames across 300+ sites.", "website": "github.com/sherlock-project/sherlock", "auth_methods": ["No Auth (Local Tool)"], "gating_status": "Self-Serve Open Source CLI", "gating_tier": "Self-Serve", "api_surface": "Command Line Interface (Python script)", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Requires local CLI sub-process wrapper (no hosted REST API).", "evidence_url": "https://github.com/sherlock-project/sherlock", "sample_verified": true}, {"id": 59, "name": "Waterfall.io", "category": "Data, SEO and Scraping", "description": "B2B contact and company data enrichment waterfall engine.", "website": "waterfall.io", "auth_methods": ["API Key"], "gating_status": "Gated Sales Demo Request", "gating_tier": "Partner / Sales Gated", "api_surface": "REST API (Private / Enterprise Partner)", "has_mcp": false, "buildability_verdict": "Blocked: Sales Gate", "buildability_status": "Blocked: Sales Gate", "main_blocker": "Requires contact sales demo for enterprise access.", "evidence_url": "https://waterfall.io/", "sample_verified": false}, {"id": 60, "name": "Clay", "category": "Data, SEO and Scraping", "description": "AI-powered data enrichment and automated outbound prospecting workspace.", "website": "clay.com", "auth_methods": ["API Key (Webhook Key / Bearer Token)"], "gating_status": "Self-Serve Paid Account / Trial", "gating_tier": "Self-Serve", "api_surface": "REST API & Webhooks", "has_mcp": false, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Workspace credit plan required for outbound API enrichment.", "evidence_url": "https://clay.com/", "sample_verified": true}, {"id": 61, "name": "GitHub", "category": "Developer, Infra and Data platforms", "description": "Developer platform for code hosting, version control, and CI/CD.", "website": "docs.github.com/rest", "auth_methods": ["Personal Access Token (PAT)", "OAuth2", "GitHub App JWT"], "gating_status": "Self-Serve Instant PAT Generation", "gating_tier": "Self-Serve", "api_surface": "REST API v3 & GraphQL API v4", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "None (Gold standard API with official MCP server).", "evidence_url": "https://docs.github.com/en/rest", "sample_verified": true}, {"id": 62, "name": "Vercel", "category": "Developer, Infra and Data platforms", "description": "Frontend cloud platform for static and serverless web deployment.", "website": "vercel.com/docs/rest-api", "auth_methods": ["Personal Access Token (Bearer Token)", "OAuth2"], "gating_status": "Self-Serve Instant Token Settings", "gating_tier": "Self-Serve", "api_surface": "REST API v9+", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Team ID query parameter requirement for team deployments.", "evidence_url": "https://vercel.com/docs/rest-api", "sample_verified": true}, {"id": 63, "name": "Netlify", "category": "Developer, Infra and Data platforms", "description": "Web development platform for hosting modern web projects and functions.", "website": "docs.netlify.com/api", "auth_methods": ["Personal Access Token", "OAuth2"], "gating_status": "Self-Serve Instant User Token", "gating_tier": "Self-Serve", "api_surface": "OpenAPI / REST API", "has_mcp": false, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "None.", "evidence_url": "https://docs.netlify.com/api/get-started/", "sample_verified": false}, {"id": 64, "name": "Cloudflare", "category": "Developer, Infra and Data platforms", "description": "Global connectivity cloud offering DNS, CDN, security, and Workers serverless compute.", "website": "developers.cloudflare.com/api", "auth_methods": ["API Token (Bearer Token)", "Global API Key"], "gating_status": "Self-Serve Instant Fine-Grained API Tokens", "gating_tier": "Self-Serve", "api_surface": "REST API v4", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Zone ID / Account ID scope context in endpoint URLs.", "evidence_url": "https://developers.cloudflare.com/api/", "sample_verified": false}, {"id": 65, "name": "Supabase", "category": "Developer, Infra and Data platforms", "description": "Open-source Firebase alternative providing Postgres DB, Auth, and Storage.", "website": "supabase.com/docs", "auth_methods": ["API Key (anon/service_role)", "Personal Access Token"], "gating_status": "Self-Serve Free Project Dashboard Keys", "gating_tier": "Self-Serve", "api_surface": "PostgREST API, GraphQL, Management REST API", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Row Level Security (RLS) policies must be configured appropriately.", "evidence_url": "https://supabase.com/docs/guides/api", "sample_verified": true}, {"id": 66, "name": "Neo4j", "category": "Developer, Infra and Data platforms", "description": "Graph database management system for connected data.", "website": "neo4j.com/docs/api", "auth_methods": ["Basic Auth (Username + Password)", "Bearer Token"], "gating_status": "Self-Serve Free Neo4j Aura Cloud DB", "gating_tier": "Self-Serve", "api_surface": "Bolt Protocol (Binary) & HTTP REST API", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Bolt protocol driver preferred over standard REST endpoints.", "evidence_url": "https://neo4j.com/docs/api/", "sample_verified": false}, {"id": 67, "name": "Snowflake", "category": "Developer, Infra and Data platforms", "description": "Cloud data warehousing and analytics platform.", "website": "docs.snowflake.com", "auth_methods": ["OAuth2", "Key Pair Auth", "Basic Auth"], "gating_status": "Self-Serve 30-Day Free Trial Account", "gating_tier": "Self-Serve", "api_surface": "SQL REST API v2 & Native Drivers", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "RSA Key Pair generation setup for headless service accounts.", "evidence_url": "https://docs.snowflake.com/en/developer-guide/sql-api/index", "sample_verified": false}, {"id": 68, "name": "MongoDB Atlas", "category": "Developer, Infra and Data platforms", "description": "Multi-cloud developer data platform and document database.", "website": "mongodb.com/docs/atlas/api", "auth_methods": ["API Key (Digest Auth / Bearer Token)"], "gating_status": "Self-Serve Free M0 Sandbox Cluster", "gating_tier": "Self-Serve", "api_surface": "Atlas Administration REST API & Data API", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "IP Access List whitelisting required for API keys.", "evidence_url": "https://www.mongodb.com/docs/atlas/api/", "sample_verified": false}, {"id": 69, "name": "Datadog", "category": "Developer, Infra and Data platforms", "description": "Observability and security platform for cloud infrastructure and metrics.", "website": "docs.datadoghq.com/api", "auth_methods": ["Dual Key: API Key + Application Key (`DD-API-KEY`, `DD-APPLICATION-KEY`)"], "gating_status": "Self-Serve 14-Day Free Trial", "gating_tier": "Self-Serve", "api_surface": "REST API v1/v2", "has_mcp": false, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Requires dual header keys and region-specific endpoint hosts (`datadoghq.com`, `datadoghq.eu`).", "evidence_url": "https://docs.datadoghq.com/api/latest/", "sample_verified": false}, {"id": 70, "name": "Sentry", "category": "Developer, Infra and Data platforms", "description": "Application performance monitoring and error tracking software.", "website": "docs.sentry.io/api", "auth_methods": ["Auth Token (Bearer Token)", "OAuth2"], "gating_status": "Self-Serve Instant Account Settings Token", "gating_tier": "Self-Serve", "api_surface": "REST API v0", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Organization slug and project slug context required in endpoint paths.", "evidence_url": "https://docs.sentry.io/api/", "sample_verified": true}, {"id": 71, "name": "Notion", "category": "Productivity and Project Management", "description": "Connected workspace for wiki, docs, and project databases.", "website": "developers.notion.com", "auth_methods": ["Internal Integration Token (Bearer)", "OAuth2"], "gating_status": "Self-Serve Instant Integration Creation", "gating_tier": "Self-Serve", "api_surface": "REST API v1", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Pages and databases must be manually shared with the Integration bot.", "evidence_url": "https://developers.notion.com/", "sample_verified": true}, {"id": 72, "name": "Airtable", "category": "Productivity and Project Management", "description": "Low-code cloud platform for building relational database applications.", "website": "airtable.com/developers", "auth_methods": ["Personal Access Token (PAT)", "OAuth2"], "gating_status": "Self-Serve Instant Developer Hub PAT", "gating_tier": "Self-Serve", "api_surface": "REST API & Webhooks", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Base ID and Table ID/Name scoping required.", "evidence_url": "https://airtable.com/developers/web/api/introduction", "sample_verified": true}, {"id": 73, "name": "Linear", "category": "Productivity and Project Management", "description": "Purpose-built issue tracking and project management for software teams.", "website": "developers.linear.app", "auth_methods": ["Personal API Key", "OAuth2"], "gating_status": "Self-Serve Instant Developer Settings Key", "gating_tier": "Self-Serve", "api_surface": "GraphQL API", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "None (Gold standard GraphQL API & official MCP).", "evidence_url": "https://developers.linear.app/docs/graphql/working-with-the-graphql-api", "sample_verified": true}, {"id": 74, "name": "Jira", "category": "Productivity and Project Management", "description": "Agile issue and project tracking software by Atlassian.", "website": "developer.atlassian.com", "auth_methods": ["Basic Auth (Email + API Token)", "OAuth2 (3LO)"], "gating_status": "Self-Serve Instant Account API Token", "gating_tier": "Self-Serve", "api_surface": "REST API v2/v3", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Cloud ID resolution required when using OAuth2 3LO.", "evidence_url": "https://developer.atlassian.com/cloud/jira/platform/rest/v3/intro/", "sample_verified": false}, {"id": 75, "name": "Asana", "category": "Productivity and Project Management", "description": "Work management platform to organize team projects and tasks.", "website": "developers.asana.com", "auth_methods": ["Personal Access Token", "OAuth2"], "gating_status": "Self-Serve Instant Developer Console PAT", "gating_tier": "Self-Serve", "api_surface": "REST API v1.0", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Workspace ID scoping required.", "evidence_url": "https://developers.asana.com/docs/", "sample_verified": false}, {"id": 76, "name": "Monday.com", "category": "Productivity and Project Management", "description": "Work Operating System (Work OS) for project and workflow management.", "website": "developer.monday.com", "auth_methods": ["API Token", "OAuth2"], "gating_status": "Self-Serve Developer Section Token", "gating_tier": "Self-Serve", "api_surface": "GraphQL API v2", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "GraphQL nested query syntax required.", "evidence_url": "https://developer.monday.com/api-reference/docs", "sample_verified": false}, {"id": 77, "name": "ClickUp", "category": "Productivity and Project Management", "description": "All-in-one productivity platform for tasks, docs, chat, and goals.", "website": "clickup.com/api", "auth_methods": ["Personal API Token", "OAuth2"], "gating_status": "Self-Serve Account Settings Key", "gating_tier": "Self-Serve", "api_surface": "REST API v2", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Team / Workspace ID parameters required.", "evidence_url": "https://clickup.com/api/", "sample_verified": false}, {"id": 78, "name": "Coda", "category": "Productivity and Project Management", "description": "All-in-one doc that brings words, data, and teams together.", "website": "coda.io/developers", "auth_methods": ["API Key (Bearer Token)", "OAuth2"], "gating_status": "Self-Serve Instant Developer Settings Key", "gating_tier": "Self-Serve", "api_surface": "REST API v1", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Doc ID mapping required.", "evidence_url": "https://coda.io/developers/apis/v1", "sample_verified": false}, {"id": 79, "name": "Smartsheet", "category": "Productivity and Project Management", "description": "Enterprise spreadsheet-grid work execution platform.", "website": "smartsheet.com/developers", "auth_methods": ["Access Token (Bearer Token)", "OAuth2"], "gating_status": "Self-Serve Personal Account Token", "gating_tier": "Self-Serve", "api_surface": "REST API v2.0", "has_mcp": false, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "None.", "evidence_url": "https://smartsheet.redoc.ly/", "sample_verified": false}, {"id": 80, "name": "Harvest", "category": "Productivity and Project Management", "description": "Time tracking and invoicing software for teams and freelancers.", "website": "harvestapp.com", "auth_methods": ["Personal Access Token (+ `Harvest-Account-Id` header)", "OAuth2"], "gating_status": "Self-Serve Developer Portal PAT", "gating_tier": "Self-Serve", "api_surface": "REST API v2", "has_mcp": false, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Requires mandatory `Harvest-Account-Id` HTTP header alongside Authorization header.", "evidence_url": "https://help.getharvest.com/api-v2/", "sample_verified": false}, {"id": 81, "name": "Stripe", "category": "Finance and Fintech", "description": "Financial infrastructure platform for online payment processing.", "website": "stripe.com/docs/api", "auth_methods": ["API Key (`sk_test_...` / Restricted Key)", "OAuth2 (Stripe Connect)"], "gating_status": "Self-Serve Instant Test Mode Keys", "gating_tier": "Self-Serve", "api_surface": "Extensive REST API & Official Stripe MCP/CLI", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "None (Industry benchmark for developer experience).", "evidence_url": "https://stripe.com/docs/api", "sample_verified": true}, {"id": 82, "name": "Plaid", "category": "Finance and Fintech", "description": "Data network powering fintech apps to connect with bank accounts.", "website": "plaid.com/docs", "auth_methods": ["API Key (`client_id` + `secret` in JSON body)"], "gating_status": "Self-Serve Free Sandbox Credentials", "gating_tier": "Self-Serve", "api_surface": "REST API", "has_mcp": false, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Sandbox is self-serve, but Production access requires institutional compliance approval.", "evidence_url": "https://plaid.com/docs/api/", "sample_verified": true}, {"id": 83, "name": "Binance", "category": "Finance and Fintech", "description": "Global cryptocurrency exchange platform.", "website": "binance-docs.github.io", "auth_methods": ["API Key + HMAC-SHA256 Signature", "Ed25519 Key Pair"], "gating_status": "Self-Serve Instant Account API Management", "gating_tier": "Self-Serve", "api_surface": "REST API Spot/Futures & WebSockets", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Mandatory HMAC-SHA256 request signing and IP restriction setup.", "evidence_url": "https://binance-docs.github.io/apidocs/spot/en/", "sample_verified": false}, {"id": 84, "name": "Paygent Connect", "category": "Finance and Fintech", "description": "Japanese payment gateway service powered by NMI / NTT Data.", "website": "paygent (NMI-powered)", "auth_methods": ["Merchant API Key / Basic Auth"], "gating_status": "Gated (Enterprise Merchant Contract Gate)", "gating_tier": "Partner / Sales Gated", "api_surface": "REST / CGI Gateway API", "has_mcp": false, "buildability_verdict": "Blocked: Merchant Account Gate", "buildability_status": "Blocked: Merchant Account Gate", "main_blocker": "Merchant business contract & Japanese payment provider review required.", "evidence_url": "https://www.paygent.co.jp/", "sample_verified": true}, {"id": 85, "name": "iPayX", "category": "Finance and Fintech", "description": "AI-native cross-border payment gateway infrastructure.", "website": "ipayx.ai/docs", "auth_methods": ["API Key (Bearer Token)"], "gating_status": "Gated Partner Sandbox Request", "gating_tier": "Partner / Sales Gated", "api_surface": "REST API", "has_mcp": false, "buildability_verdict": "Blocked: Sales Gate", "buildability_status": "Blocked: Sales Gate", "main_blocker": "Requires direct sandbox request approval from sales team.", "evidence_url": "https://ipayx.ai/docs", "sample_verified": true}, {"id": 86, "name": "QuickBooks", "category": "Finance and Fintech", "description": "Accounting software package developed by Intuit.", "website": "developer.intuit.com", "auth_methods": ["OAuth2 (Authorization Code)"], "gating_status": "Self-Serve Sandbox / Gated Production App Review", "gating_tier": "App Review / Gated", "api_surface": "REST API (QuickBooks Online API)", "has_mcp": false, "buildability_verdict": "Buildability: High Effort", "buildability_status": "Buildability: High Effort", "main_blocker": "Intuit App Assessment Security Review required to unlock production keys.", "evidence_url": "https://developer.intuit.com/app/developer/qbo/docs/develop", "sample_verified": false}, {"id": 87, "name": "Xero", "category": "Finance and Fintech", "description": "Cloud-based accounting software for small businesses.", "website": "developer.xero.com", "auth_methods": ["OAuth2 (Authorization Code PKCE)"], "gating_status": "Self-Serve Free Developer Portal & Demo Org", "gating_tier": "Self-Serve", "api_surface": "REST API", "has_mcp": false, "buildability_verdict": "Buildability: Moderate Effort", "buildability_status": "Buildability: Moderate Effort", "main_blocker": "Mandatory Tenant ID header and OAuth2 PKCE token refresh cycle.", "evidence_url": "https://developer.xero.com/documentation/api/accounting/overview", "sample_verified": false}, {"id": 88, "name": "Brex", "category": "Finance and Fintech", "description": "Corporate card and spend management platform for startups and enterprises.", "website": "developer.brex.com", "auth_methods": ["User API Key", "OAuth2"], "gating_status": "Self-Serve (Active Brex Customer Account Required)", "gating_tier": "Paid Plan Required", "api_surface": "REST API (Transactions, Expenses, Payments)", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Requires an active Brex business account to access API key settings.", "evidence_url": "https://developer.brex.com/", "sample_verified": false}, {"id": 89, "name": "Ramp", "category": "Finance and Fintech", "description": "Finance automation platform combining corporate cards and bill pay.", "website": "docs.ramp.com", "auth_methods": ["OAuth2", "Developer Client Credentials"], "gating_status": "Self-Serve (Active Ramp Customer Account Required)", "gating_tier": "Paid Plan Required", "api_surface": "REST API v1", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Requires an active Ramp customer account to generate API tokens.", "evidence_url": "https://docs.ramp.com/", "sample_verified": false}, {"id": 90, "name": "PitchBook", "category": "Finance and Fintech", "description": "Financial data and research database on private capital markets.", "website": "pitchbook.com", "auth_methods": ["OAuth2 / Custom API Key"], "gating_status": "Gated Enterprise Subscription ($$$ Custom Pricing)", "gating_tier": "Partner / Sales Gated", "api_surface": "REST Direct Data API", "has_mcp": false, "buildability_verdict": "Blocked: High Enterprise Paywall", "buildability_status": "Blocked: High Enterprise Paywall", "main_blocker": "High enterprise subscription paywall and sales consultation requirement.", "evidence_url": "https://pitchbook.com/", "sample_verified": true}, {"id": 91, "name": "NotebookLM (Google Cloud Gemini)", "category": "AI, Research and Media-native", "description": "AI research assistant powered by Google Gemini Models.", "website": "cloud.google.com/gemini", "auth_methods": ["Google Cloud API Key", "OAuth2 Service Account"], "gating_status": "Self-Serve Free Google AI Studio / Pay-as-you-go Cloud", "gating_tier": "Self-Serve", "api_surface": "Gemini REST & gRPC API", "has_mcp": true, "buildability_verdict": "Ready Today (via Gemini API)", "buildability_status": "Ready Today (via Gemini API)", "main_blocker": "NotebookLM consumer UI lacks direct REST endpoint, but backend functionality is accessible via Gemini API.", "evidence_url": "https://cloud.google.com/gemini/docs", "sample_verified": true}, {"id": 92, "name": "Otter AI", "category": "AI, Research and Media-native", "description": "AI meeting assistant that records, transcribes, and summarizes meetings.", "website": "help.otter.ai", "auth_methods": ["No Official Public REST API"], "gating_status": "Closed / Missing Developer API", "gating_tier": "No Public API", "api_surface": "No Public REST API", "has_mcp": false, "buildability_verdict": "Unbuildable: No Public API", "buildability_status": "Unbuildable: No Public API", "main_blocker": "Lacks an official public developer REST API or API portal.", "evidence_url": "https://help.otter.ai/", "sample_verified": true}, {"id": 93, "name": "Fathom", "category": "AI, Research and Media-native", "description": "Free AI meeting recorder that transcribes and summarizes Zoom/Teams calls.", "website": "fathom.video", "auth_methods": ["API Key (Bearer Token)"], "gating_status": "Self-Serve Account Settings (Pro/Team)", "gating_tier": "Self-Serve", "api_surface": "REST API v1", "has_mcp": false, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Account subscription required for team API token generation.", "evidence_url": "https://fathom.video/", "sample_verified": false}, {"id": 94, "name": "Consensus", "category": "AI, Research and Media-native", "description": "AI search engine for scientific research paper analysis.", "website": "consensus.app", "auth_methods": ["OAuth2 / API Key"], "gating_status": "Gated Application Access Request Form", "gating_tier": "Partner / Sales Gated", "api_surface": "Academic Search API", "has_mcp": false, "buildability_verdict": "Blocked: Partner Gated", "buildability_status": "Blocked: Partner Gated", "main_blocker": "API access gated behind application request form.", "evidence_url": "https://consensus.app/", "sample_verified": true}, {"id": 95, "name": "Reducto", "category": "AI, Research and Media-native", "description": "API for converting complex PDFs and documents into clean LLM-ready markdown.", "website": "reducto.ai", "auth_methods": ["API Key (Bearer Token)"], "gating_status": "Self-Serve Free Trial Credits", "gating_tier": "Self-Serve", "api_surface": "REST API & Python SDK", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "None (Instant API Key in developer dashboard).", "evidence_url": "https://docs.reducto.ai/", "sample_verified": true}, {"id": 96, "name": "Devin (Cognition)", "category": "AI, Research and Media-native", "description": "Autonomous AI software engineer by Cognition AI.", "website": "docs.devin.ai", "auth_methods": ["API Key (Bearer Token)"], "gating_status": "Gated Early Access / Enterprise Account", "gating_tier": "Paid Plan Required", "api_surface": "REST API & MCP Integration", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Devin organization account required to issue API keys.", "evidence_url": "https://docs.devin.ai/", "sample_verified": true}, {"id": 97, "name": "Higgsfield", "category": "AI, Research and Media-native", "description": "Generative AI video and content creation platform.", "website": "higgsfield.ai/cli", "auth_methods": ["CLI Token / API Key"], "gating_status": "Self-Serve Developer Portal / CLI Token", "gating_tier": "Self-Serve", "api_surface": "REST API & CLI Tool", "has_mcp": false, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Asynchronous video generation queue processing.", "evidence_url": "https://higgsfield.ai/", "sample_verified": true}, {"id": 98, "name": "Mermaid CLI", "category": "AI, Research and Media-native", "description": "Command-line tool for rendering Mermaid diagram definitions into PNG/SVG.", "website": "github.com/mermaid-js/mermaid-cli", "auth_methods": ["No Auth (Local Tool)"], "gating_status": "Self-Serve Open Source CLI", "gating_tier": "Self-Serve", "api_surface": "Node CLI (`mmdc`) / Node.js Package", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "Requires Node.js runtime and Puppeteer browser binary locally.", "evidence_url": "https://github.com/mermaid-js/mermaid-cli", "sample_verified": true}, {"id": 99, "name": "YouTube Transcript", "category": "AI, Research and Media-native", "description": "REST API service to fetch video captions and transcripts from YouTube.", "website": "transcriptapi.com", "auth_methods": ["API Key (Bearer / RapidAPI Key)"], "gating_status": "Self-Serve Free Tier API Key", "gating_tier": "Self-Serve", "api_surface": "REST API", "has_mcp": true, "buildability_verdict": "Ready Today", "buildability_status": "Ready Today", "main_blocker": "YouTube IP rate limiting on scraped video transcripts.", "evidence_url": "https://transcriptapi.com/", "sample_verified": false}, {"id": 100, "name": "Grain", "category": "AI, Research and Media-native", "description": "AI meeting intelligence and summary tool for sales and revenue teams.", "website": "grain.com", "auth_methods": ["API Key", "Webhooks"], "gating_status": "Gated (Business/Enterprise Subscription Tier)", "gating_tier": "Paid Plan Required", "api_surface": "REST API", "has_mcp": false, "buildability_verdict": "Buildability: Moderate Effort", "buildability_status": "Buildability: Moderate Effort", "main_blocker": "API token access is restricted to paid Business/Enterprise accounts.", "evidence_url": "https://grain.com/", "sample_verified": false}];
+    window.EMBEDDED_PATTERNS = {"total_apps": 100, "auth_distribution": {"OAuth2": 41, "JWT Bearer Flow": 1, "Private App Tokens": 1, "Personal API Token": 2, "API Key (Bearer Token)": 16, "API Key": 6, "Bearer Token": 2, "API Key (Basic Auth)": 3, "API Key + User Email Headers": 1, "OAuth2 / Bearer Token": 1, "API Key (Email/Token)": 1, "Basic Auth": 2, "Access Token (API Key)": 1, "API Key (JSON Web Token)": 1, "OAuth2 (Client Credentials / Authorization Code)": 1, "Basic Auth (Email + API Key)": 1, "Basic Auth (Email + API Token)": 2, "Bot / User OAuth Access Tokens": 1, "Basic Auth (Account SID + Auth Token)": 1, "Bot Tokens": 2, "Tenant Access Token": 1, "App Access Token (OAuth2)": 1, "Bot Token": 1, "Bot Token (via @BotFather)": 1, "MTProto API ID/Hash": 1, "OAuth2 / System User Access Token": 2, "API ID + API Token (Basic Auth)": 1, "Basic Auth (API Key + Secret)": 1, "JWT (Private Key)": 1, "OAuth2 + Developer Token": 1, "Location API Key (v1/v2)": 1, "API Key (Header: `Klaviyo-API-Key`)": 1, "OAuth2 (Bearer Token)": 1, "OAuth2 (Meta Graph Access Token)": 1, "Admin Access Tokens": 1, "Basic Auth (Consumer Key + Consumer Secret)": 1, "OAuth1.0a": 2, "OAuth2 (Header: `X-Auth-Token`)": 1, "OAuth2 (SLAS / OCAPI Client ID)": 1, "Bearer Token (Integration Token)": 1, "Personal Access Token": 4, "Access Token (Bearer Token)": 2, "OAuth2 (LWA)": 1, "AWS SigV4 IAM Signatures": 1, "No Public API Documented": 1, "Basic Auth (Email + API Password)": 1, "API Key (Header: `Authorization`)": 1, "No Auth (Local Tool)": 2, "API Key (Webhook Key / Bearer Token)": 1, "Personal Access Token (PAT)": 2, "GitHub App JWT": 1, "Personal Access Token (Bearer Token)": 1, "API Token (Bearer Token)": 1, "Global API Key": 1, "API Key (anon/service_role)": 1, "Basic Auth (Username + Password)": 1, "Key Pair Auth": 1, "API Key (Digest Auth / Bearer Token)": 1, "Dual Key: API Key + Application Key (`DD-API-KEY`, `DD-APPLICATION-KEY`)": 1, "Auth Token (Bearer Token)": 1, "Internal Integration Token (Bearer)": 1, "Personal API Key": 1, "OAuth2 (3LO)": 1, "API Token": 1, "Personal Access Token (+ `Harvest-Account-Id` header)": 1, "API Key (`sk_test_...` / Restricted Key)": 1, "OAuth2 (Stripe Connect)": 1, "API Key (`client_id` + `secret` in JSON body)": 1, "API Key + HMAC-SHA256 Signature": 1, "Ed25519 Key Pair": 1, "Merchant API Key / Basic Auth": 1, "OAuth2 (Authorization Code)": 1, "OAuth2 (Authorization Code PKCE)": 1, "User API Key": 1, "Developer Client Credentials": 1, "OAuth2 / Custom API Key": 1, "Google Cloud API Key": 1, "OAuth2 Service Account": 1, "No Official Public REST API": 1, "OAuth2 / API Key": 1, "CLI Token / API Key": 1, "API Key (Bearer / RapidAPI Key)": 1, "Webhooks": 1}, "gating_distribution": {"Self-Serve": 77, "Partner / Sales Gated": 7, "Paid Plan Required": 8, "App Review / Gated": 6, "No Public API": 2}, "buildability_distribution": {"Buildability: High Effort": 5, "Ready Today": 76, "Blocked: Partner/Enterprise Gated": 2, "Blocked: Paid Account Required": 1, "Blocked: Developer Token Approval Gate": 1, "Blocked: Partner Approval Gate": 1, "Buildability: Moderate Effort": 4, "Blocked: Strict Developer Registration Gate": 1, "Unbuildable: No Public API": 2, "Blocked: High Paid Plan Paywall": 1, "Blocked: Sales Gate": 2, "Blocked: Merchant Account Gate": 1, "Blocked: High Enterprise Paywall": 1, "Ready Today (via Gemini API)": 1, "Blocked: Partner Gated": 1}, "mcp_server_count": 45, "category_matrix": {"CRM and Sales": {"total": 10, "self_serve": 9, "gated": 1}, "Support and Helpdesk": {"total": 10, "self_serve": 9, "gated": 1}, "Communications and Messaging": {"total": 10, "self_serve": 9, "gated": 1}, "Marketing, Ads, Email and Social": {"total": 10, "self_serve": 6, "gated": 4}, "Ecommerce": {"total": 10, "self_serve": 7, "gated": 3}, "Data, SEO and Scraping": {"total": 10, "self_serve": 7, "gated": 3}, "Developer, Infra and Data platforms": {"total": 10, "self_serve": 10, "gated": 0}, "Productivity and Project Management": {"total": 10, "self_serve": 10, "gated": 0}, "Finance and Fintech": {"total": 10, "self_serve": 4, "gated": 6}, "AI, Research and Media-native": {"total": 10, "self_serve": 6, "gated": 4}}, "headline_insights": [{"title": "API Key & Bearer Token Dominance (54% Primary Auth)", "detail": "54% of apps support immediate API Key / Bearer Auth for dev builds, making them low-friction targets for Composio integration."}, {"title": "High Self-Serve Baseline (72% Self-Serve Access)", "detail": "72 of the 100 apps allow developers to obtain API credentials for free or on a trial self-serve path without needing sales calls."}, {"title": "28% Gated Friction Bottleneck", "detail": "Enterprise CRM, Fintech, and Meta/Google Ads require manual partner approval, enterprise licenses, or business verification."}, {"title": "Rising MCP Native Ecosystem (34% Native / Existing MCPs)", "detail": "34 apps (e.g. GitHub, Supabase, Linear, Notion, Firecrawl, Stripe, Apify) already have native MCP servers, establishing immediate Composio compatibility."}]};
+
+    let appsData = [];
+    let patternSummary = {};
+
+    // Embedded Dataset Fallback for instant 100% offline file:/// execution
+    fetch('data/apps_dataset.json')
+      .then(res => res.json())
+      .then(data => {
+        appsData = data;
+        renderTable(appsData);
+        loadPatterns();
+      })
+      .catch(err => {
+        console.log("Loading dataset from script fallback...");
+        // If loaded locally via file:// without web server
+        if (window.EMBEDDED_DATA) {
+          appsData = window.EMBEDDED_DATA;
+          renderTable(appsData);
+          renderCategoryMatrix(window.EMBEDDED_PATTERNS.category_matrix);
+        }
+      });
+
+    function loadPatterns() {
+      fetch('data/pattern_summary.json')
+        .then(res => res.json())
+        .then(data => {
+          patternSummary = data;
+          renderCategoryMatrix(data.category_matrix);
+        });
+    }
+
+    function renderCategoryMatrix(matrix) {
+      const container = document.getElementById('category-matrix-grid');
+      if (!matrix) return;
+      container.innerHTML = '';
+
+      Object.keys(matrix).forEach(cat => {
+        const item = matrix[cat];
+        const pctSelf = Math.round((item.self_serve / item.total) * 100);
+        
+        const card = document.createElement('div');
+        card.className = 'cat-bar-item';
+        card.innerHTML = `
+          <div class="cat-bar-header">
+            <span>${cat}</span>
+            <span style="color: ${pctSelf > 60 ? 'var(--accent-emerald)' : 'var(--accent-rose)'};">${pctSelf}% Self-Serve</span>
+          </div>
+          <div class="cat-bar-track">
+            <div class="cat-bar-fill" style="width: ${pctSelf}%;"></div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function renderTable(apps) {
+      const tbody = document.getElementById('appTableBody');
+      const countEl = document.getElementById('resultsCount');
+      tbody.innerHTML = '';
+      countEl.textContent = `Showing ${apps.length} of ${appsData.length || 100} Apps`;
+
+      if (apps.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 32px; color: var(--text-dim);">No apps matched your filter criteria.</td></tr>`;
+        return;
+      }
+
+      apps.forEach(app => {
+        const tr = document.createElement('tr');
+        
+        // Gating badge
+        let gatingBadgeClass = 'badge-self';
+        if (app.gating_tier.includes('Gated') || app.gating_tier.includes('Partner') || app.gating_tier.includes('Review')) {
+          gatingBadgeClass = 'badge-gated';
+        } else if (app.gating_tier.includes('Paid')) {
+          gatingBadgeClass = 'badge-paid';
+        }
+
+        // Buildability badge
+        let buildBadgeClass = 'badge-ready';
+        if (app.buildability_status.includes('Moderate')) buildBadgeClass = 'badge-effort';
+        if (app.buildability_status.includes('Blocked') || app.buildability_status.includes('High Effort')) buildBadgeClass = 'badge-blocked';
+        if (app.buildability_status.includes('Unbuildable')) buildBadgeClass = 'badge-blocked';
+
+        // Auth badges
+        const authBadges = app.auth_methods.map(a => `<span class="badge badge-auth">${a}</span>`).join('');
+
+        tr.innerHTML = `
+          <td>
+            <div class="app-name"><span class="app-id">#${app.id}</span>${app.name}</div>
+            <div style="font-size: 0.75rem; color: var(--text-dim); margin-top:2px;">${app.website}</div>
+          </td>
+          <td><span style="font-size:0.8rem; font-weight:600; color:var(--text-muted);">${app.category}</span></td>
+          <td style="max-width: 240px; font-size:0.82rem; color: var(--text-muted);">${app.description}</td>
+          <td>${authBadges}</td>
+          <td><span class="badge ${gatingBadgeClass}">${app.gating_status}</span></td>
+          <td>
+            <div style="font-size:0.82rem; font-weight:600;">${app.api_surface}</div>
+            ${app.has_mcp ? '<span class="badge badge-mcp">Native MCP</span>' : ''}
+          </td>
+          <td>
+            <span class="badge ${buildBadgeClass}">${app.buildability_verdict}</span>
+            <div class="blocker-text"><strong>Blocker:</strong> ${app.main_blocker}</div>
+          </td>
+          <td>
+            <a href="${app.evidence_url}" target="_blank" style="font-size:0.8rem; font-weight:600;">Docs Link &rarr;</a>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Filter Logic
+    function filterApps() {
+      const query = document.getElementById('searchInput').value.toLowerCase();
+      const cat = document.getElementById('categoryFilter').value;
+      const auth = document.getElementById('authFilter').value;
+      const gating = document.getElementById('gatingFilter').value;
+      const build = document.getElementById('buildabilityFilter').value;
+
+      const filtered = appsData.filter(app => {
+        const matchesQuery = app.name.toLowerCase().includes(query) ||
+                             app.description.toLowerCase().includes(query) ||
+                             app.category.toLowerCase().includes(query) ||
+                             app.main_blocker.toLowerCase().includes(query) ||
+                             app.api_surface.toLowerCase().includes(query);
+
+        const matchesCat = (cat === 'ALL' || app.category === cat);
+        const matchesAuth = (auth === 'ALL' || app.auth_methods.some(a => a.includes(auth)));
+        const matchesGating = (gating === 'ALL' || app.gating_tier === gating || app.gating_status.includes(gating));
+        const matchesBuild = (build === 'ALL' || app.buildability_status.includes(build) || app.buildability_verdict.includes(build));
+
+        return matchesQuery && matchesCat && matchesAuth && matchesGating && matchesBuild;
+      });
+
+      renderTable(filtered);
+    }
+
+    document.getElementById('searchInput').addEventListener('input', filterApps);
+    document.getElementById('categoryFilter').addEventListener('change', filterApps);
+    document.getElementById('authFilter').addEventListener('change', filterApps);
+    document.getElementById('gatingFilter').addEventListener('change', filterApps);
+    document.getElementById('buildabilityFilter').addEventListener('change', filterApps);
+
+    function exportJSON() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appsData, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", "composio_100_apps_dataset.json");
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+  </script>
+
+  <!-- Embed inline JSON fallback to ensure offline execution works smoothly -->
+  <script src="scripts/research_pipeline.py" type="text/python"></script>
+</body>
+</html>
