@@ -1,125 +1,255 @@
-# Composio AI Product Ops — 100-App Agent Integration & Feasibility Case Study
+# 📚 YouTube AI Lecture Notes & Study Assistant
 
-This repository contains an automated research agent pipeline, pattern taxonomy, multi-stage verification audit, and an executive interactive single-page HTML Case Study evaluating 100 requesting SaaS applications across 10 categories for Composio Agent Toolkit feasibility.
-
----
-
-## Executive Summary & Key Findings
-
-- **Total Apps Researched:** 100 SaaS applications across 10 distinct market categories.
-- **Self-Serve Access Rate:** **72% (72/100 apps)** permit instant developer sign-up, free sandbox access, or trial API keys without sales intervention.
-- **Dominant Auth Pattern:** **API Key & Bearer Tokens (54%)** lead as the lowest-friction authentication path, followed by OAuth2 (38%) and Basic Auth/Custom Headers (8%).
-- **Native MCP Ecosystem:** **34 apps** (including GitHub, Supabase, Linear, Notion, Firecrawl, Stripe, Apify, Vercel, Slack) already possess active or native Model Context Protocol (MCP) servers, making them instant Composio integration targets.
-- **Empirical Ground-Truth Accuracy:** Multi-pass verification loop improved data accuracy from **81.0% (Pass 1 AI baseline)** to **94.0% (Pass 2 Web Verification Loop)** and **98.0% (Pass 3 Human-in-the-Loop Audit)**.
+An end-to-end, AI-powered study platform that transforms any YouTube lecture or educational video into structured academic notes, interactive multi-topic quizzes, study flashcards, concise summaries, and a conversational RAG (Retrieval-Augmented Generation) assistant.
 
 ---
 
-## 📁 Repository Architecture
+## 🌟 Key Features
 
-```
-.
-├── index.html                 # Interactive Executive HTML Case Study & 100-App Matrix Explorer
-├── README.md                  # Instructions, pipeline runner guide, and pattern breakdown
-├── scripts/
-│   ├── research_pipeline.py   # Automated 100-app research & data structuring pipeline
-│   └── verify_pipeline.py     # Multi-stage accuracy verification & dataset auditor
-└── data/
-    ├── apps_dataset.json      # Complete database of all 100 apps with auth, gating, & blocker facts
-    ├── pattern_summary.json   # Aggregated sector matrix, auth counts, & gating statistics
-    └── verification_log.json  # Multi-pass accuracy trajectory, hits, & misses log
+- **⚡ Real-Time Note Streaming (SSE)**: Streams markdown lecture notes live as they are generated using Server-Sent Events.
+- **🌐 Multi-Language Support**: Choose your preferred language style:
+  - **English**: Formal technical documentation and breakdowns.
+  - **Hindi**: Clean Devanagari script with English technical terms.
+  - **Hinglish**: Natural colloquial blend with definitions, real-world examples, and interview focus.
+- **🧠 Per-Topic Interactive Quizzes**: Generates 3–4 multiple-choice questions for each topic in the lecture notes, complete with instant color-coded feedback and explanations.
+- **📋 3D Study Flashcards**: Interactive flip-cards with progress tracking, question-and-answer views, and "Mark as Known" counters.
+- **📊 Instant Summaries**: Creates a concise, structured bulleted summary of key lecture takeaways.
+- **💬 RAG Conversational Chat**: Ask questions about your saved notes and receive grounded, accurate answers backed by PostgreSQL `pgvector` semantic search.
+- **🏷️ Tagging & Full-Text Search**: Organize notes with custom tags and search titles and note contents.
+- **🔗 Public Note Sharing**: Generate public shareable links (`/shared/:shareId`) that can be viewed by anyone without requiring a login.
+- **🌙 Dark & Light Mode**: Smooth theme toggling with zero flicker and full CSS variable styling.
+- **🛡️ Multi-Model Groq Failover**: Model selector on the frontend with automatic backend failover (`qwen/qwen3.6-27b` &rarr; `openai/gpt-oss-20b` &rarr; `qwen/qwen3.8-27b` &rarr; `openai/gpt-oss-120b`) to handle free-tier rate limits.
+
+---
+
+## 🏗️ System Architecture
+
+```mermaid
+graph TB
+    subgraph Client ["Frontend Layer (React 18 + Vite)"]
+        UI["UI Components (Notes, Quiz, Flashcards, Chat, Public)"]
+        AuthCtx["AuthContext (Supabase Auth)"]
+        ThemeCtx["ThemeContext (Dark / Light)"]
+        SSEClient["SSE Stream Consumer (Fetch + ReadableStream)"]
+    end
+
+    subgraph Gateway ["API & Processing Layer (FastAPI)"]
+        API["FastAPI App (Async Endpoints)"]
+        AuthMiddleware["JWT Token Validator (Supabase Auth)"]
+        SSEStreamer["SSE Engine (token_to_sse)"]
+        BgWorker["Background Task Worker (asyncio)"]
+    end
+
+    subgraph AIEngine ["LLM & Transcript Services"]
+        YT["YouTube Transcript API"]
+        Groq["Groq Cloud API (Qwen 3.6 / GPT-OSS / LLaMA)"]
+        ThinkFilter["Think-Tag Regex & Stream Stripper"]
+        Embedder["Sentence-Transformers (all-MiniLM-L6-v2)"]
+    end
+
+    subgraph DataLayer ["Database & Storage Layer (Supabase / PostgreSQL)"]
+        DB[(PostgreSQL 15)]
+        PGVector["pgvector Extension (VECTOR 384)"]
+        RLS["Row Level Security (RLS Policies)"]
+    end
+
+    %% Interactions
+    UI --> AuthCtx
+    UI --> ThemeCtx
+    UI --> SSEClient
+    SSEClient -->|SSE / REST Request| API
+    API --> AuthMiddleware
+    AuthMiddleware -->|Validate JWT| DB
+    API --> YT
+    API --> Groq
+    Groq --> ThinkFilter
+    ThinkFilter --> SSEStreamer
+    SSEStreamer -->|Real-time Token Stream| SSEClient
+    API --> BgWorker
+    BgWorker --> Embedder
+    Embedder -->|Store Vector 384| PGVector
+    API -->|PostgREST Auth Header| RLS
+    RLS --> DB
 ```
 
 ---
 
-## ⚡ Quick Start: Running the Research Agent & Verification Pipeline
+## 📁 Repository Structure
 
-### Prerequisites
-- Python 3.9+ installed on your system.
-- Standard Python standard library (`json`, `os`, `sys`). No external heavy dependencies required.
-
-### 1. Execute the Automated Research Pipeline
-To re-run the research agent pipeline, regenerate the datasets, and update `index.html`:
-
-```bash
-python scripts/research_pipeline.py
+```plaintext
+yt-lecture-notes/
+├── backend/
+│   ├── .env                    # Environment variables (API keys, Supabase credentials)
+│   ├── .env.example            # Environment template
+│   ├── auth.py                 # Supabase JWT token verification & auth dependencies
+│   ├── db.py                   # Supabase CRUD operations (notes, chunks, messages, tags)
+│   ├── dependencies.py         # LLM provider settings & configuration
+│   ├── llm.py                  # Multi-model streaming, think-tag filter & fallback logic
+│   ├── main.py                 # FastAPI app, SSE endpoints, RAG, Quiz, Summary, Flashcards
+│   ├── rag.py                  # RAG embeddings (sentence-transformers), chunking & similarity
+│   ├── requirements.txt        # Python backend dependencies
+│   ├── sse.py                  # Server-Sent Events (SSE) streaming helpers
+│   ├── transcript.py           # YouTube transcript fetcher & timestamp processor
+│   ├── utils.py                # Token counter & chunk splitting utilities
+│   └── Procfile                # Production startup script for Render / Railway
+│
+├── frontend/
+│   ├── package.json            # Node.js dependencies & scripts
+│   ├── vite.config.js          # Vite build & server configuration
+│   ├── vercel.json             # Single Page Application (SPA) routing rules for Vercel
+│   ├── index.html              # HTML entry point
+│   └── src/
+│       ├── main.jsx            # React root entry point with CSS import
+│       ├── App.jsx             # Main router, navigation bar & landing page
+│       ├── config.js           # Dynamic API base URL resolution
+│       ├── index.css           # Global theme transitions, dark & light mode styles
+│       ├── components/
+│       │   ├── AuthModal.jsx       # Google OAuth & Email/Password modal
+│       │   ├── NoteGenerator.jsx   # YouTube URL input, model & language picker, note stream
+│       │   ├── MyNotes.jsx         # Saved notes library with search, tags & tab switcher
+│       │   ├── QuizPanel.jsx       # Per-topic 3-4 MCQ interactive quiz & score tracker
+│       │   ├── FlashcardPanel.jsx  # Interactive study flip-cards & progress tracker
+│       │   ├── ChatPanel.jsx       # RAG-based AI chat with saved notes
+│       │   └── PublicNote.jsx      # Public shared note view (accessible without login)
+│       ├── context/
+│       │   ├── AuthContext.jsx     # Supabase Auth provider (login, signup, session state)
+│       │   └── ThemeContext.jsx    # Dark / Light theme provider (localStorage persisted)
+│       ├── lib/
+│       │   └── supabase.js         # Supabase JS client configuration
+│       └── utils/
+│           └── api.js              # SSE streaming fetch wrappers
+│
+├── render.yaml                 # Infrastructure as Code (IaC) configuration for Render
+├── supabase_schema.sql         # Base PostgreSQL schema (notes, chunks, pgvector, RLS)
+├── supabase_migration_v2.sql   # Migration for tags, language, and public share links
+└── README.md                   # Project documentation
 ```
-
-*Output:*
-```text
-Data generation and HTML embedding complete! Saved to data/apps_dataset.json, data/pattern_summary.json, and data/verification_log.json.
-```
-
-### 2. Run the Verification Loop & Dataset Auditor
-To run the automated verification checks and view the multi-pass accuracy log:
-
-```bash
-python scripts/verify_pipeline.py
-```
-
-*Output Highlights:*
-```text
-==========================================================
- COMPOSIO 100-APP RESEARCH VERIFICATION & AUDIT RUNNER
-==========================================================
- Total Apps: 100 / 100
- Unique Categories: 10 (Expected: 10)
- Missing Evidence URLs: 0
- Ground-Truth Hand Verified Samples: 41 apps
-
- Pass 1 Accuracy: 81.0% (Initial LLM extraction baseline)
- Pass 2 Accuracy: 94.0% (Automated Web Search & Doc Cross-Check Loop)
- Pass 3 Accuracy: 98.0% (Human Ground-Truth Sample Audit)
-==========================================================
-```
-
-### 3. Open the Interactive HTML Case Study
-Simply open `index.html` directly in any web browser:
-- Double-click `index.html` (runs completely standalone without CORS or server requirements), OR
-- Launch a local web server:
-  ```bash
-  python -m http.server 8080
-  ```
-  Then navigate to `http://localhost:8080` in your web browser.
 
 ---
 
-## 📊 Pattern Taxonomy & Category Insights
+## 🛠️ Tech Stack
 
-| Sector Category | Total Apps | Self-Serve Rate | Dominant Auth | Top Blocker / Developer Friction |
-|---|:---:|:---:|:---:|---|
-| **1. CRM & Sales** | 10 | 80% | OAuth2 / API Key | Salesforce OAuth scopes; DealCloud enterprise client gate |
-| **2. Support & Helpdesk** | 10 | 80% | API Key / OAuth2 | Subdomain endpoint formatting (Zendesk, Gorgias); Gladly enterprise gate |
-| **3. Communications** | 10 | 80% | OAuth2 / Bot Tokens | Meta WhatsApp business verification & partner approval |
-| **4. Marketing & Social** | 10 | 50% | OAuth2 / API Key | Meta/Google Ads app review & manual developer token approval |
-| **5. Ecommerce** | 10 | 70% | OAuth2 / API Key | Amazon SP-API PII audit; Fanbasis missing public REST API |
-| **6. Data, SEO & Scraping** | 10 | 70% | API Key | Ahrefs/Waterfall high paywalls & sales demo gates |
-| **7. Developer & Infra** | 10 | 100% | API Key / PAT | IP whitelisting (MongoDB Atlas); Dual keys (Datadog) |
-| **8. Productivity & Mgmt** | 10 | 100% | API Key / PAT | Workspace/Doc ID scoping (Harvest header requirement) |
-| **9. Finance & Fintech** | 10 | 50% | API Key / OAuth2 | Institutional compliance (Plaid prod); Japanese merchant gate (Paygent) |
-| **10. AI & Media-native** | 10 | 70% | API Key | Otter AI missing public API; Gemini API wrapper for NotebookLM |
+- **Frontend**: React 18, Vite, React Router 6, ReactMarkdown, remark-gfm.
+- **Backend**: FastAPI (Python 3.10+), Uvicorn, AsyncIO, SSE (Server-Sent Events).
+- **AI & LLMs**: Groq Cloud API (`qwen/qwen3.6-27b`, `openai/gpt-oss-20b`, `qwen/qwen3.8-27b`, `openai/gpt-oss-120b`).
+- **Vector Embeddings**: `sentence-transformers` (`all-MiniLM-L6-v2`, 384 dimensions).
+- **Database & Auth**: Supabase PostgreSQL with `pgvector` extension and Row Level Security (RLS).
 
 ---
 
-## 🔍 Verification Loop & Human-in-the-Loop Audit
+## ⚡ Quick Start (Local Setup)
 
-### Why Verification Loops Were Crucial
-1. **Pass 1 (Baseline Autonomous LLM Extraction — 81.0% Accuracy):**
-   The initial automated LLM pass hallucinated public API availability for closed platforms (e.g. Otter AI, Fanbasis) and missed enterprise gating rules for platforms like DealCloud.
-2. **Pass 2 (Web Search & Doc Verification Agent Loop — 94.0% Accuracy):**
-   The verification agent cross-referenced developer documentation endpoints, identified missing REST APIs, and extracted mandatory custom headers (e.g. `Klaviyo-API-Key` revision header, `Harvest-Account-Id`).
-3. **Pass 3 (Human-in-the-Loop Ground-Truth Sample Audit — 98.0% Accuracy):**
-   A manual sample audit of 20 high-ambiguity edge cases (DealCloud, NotebookLM, Higgsfield, Paygent Connect, PitchBook) resolved edge cases, reaching **98% empirical ground-truth accuracy**.
-
-### Corrected Discrepancies (Hits vs Misses)
-- **Otter AI (Miss -> Corrected):** Pass 1 claimed API key available via help desk. Verified truth: No official public REST API exists (Unbuildable).
-- **NotebookLM (Miss -> Corrected):** Pass 1 claimed no API exists. Verified truth: Consumer UI is closed, but core capability is buildable today via Google Cloud Gemini API.
-- **DealCloud (Miss -> Corrected):** Pass 1 claimed self-serve API token. Verified truth: API documentation is public, but access requires an active enterprise DealCloud workspace tenant.
-- **Harvest (Hit / Verified):** Verified that API requests require a mandatory `Harvest-Account-Id` header alongside the Authorization token.
+### 1. Prerequisites
+- **Python 3.10+**
+- **Node.js 18+** & npm
+- **Supabase Account** (Free tier)
+- **Groq Cloud API Key** (Free tier from [console.groq.com](https://console.groq.com))
 
 ---
 
-## 🛠️ Buildability Summary for Composio
+### 2. Database Setup (Supabase)
+1. Create a new project in [Supabase](https://supabase.com).
+2. Open the **SQL Editor** in your Supabase dashboard and run:
+   - `supabase_schema.sql` (Creates tables, pgvector extension, and RLS policies).
+   - `supabase_migration_v2.sql` (Adds tags, language, and public share support).
 
-- **72 Apps (Instant Low-Hanging Fruit):** Can be built into Composio Agent Toolkits today with zero outreach.
-- **20 Apps (Moderate/High Effort):** Require app reviews (Meta/Google Ads), complex OAuth PKCE flows (Xero), or dual keys (Datadog).
-- **8 Apps (Blocked / Strategic Outreach Needed):** Paywalled or gated behind enterprise sales agreements (DealCloud, PitchBook, Paygent Connect, Ahrefs, Waterfall.io).
+---
+
+### 3. Backend Setup
+
+1. Navigate to the backend folder:
+   ```bash
+   cd backend
+   ```
+2. Create and activate a virtual environment:
+   ```bash
+   python -m venv venv
+   # On Windows:
+   venv\Scripts\activate
+   # On Linux/macOS:
+   source venv/bin/activate
+   ```
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. Create a `.env` file inside `backend/` based on `.env.example`:
+   ```env
+   LLM_PROVIDER=groq
+   GROQ_API_KEY=your_groq_api_key_here
+   GROQ_MODEL=qwen/qwen3.6-27b
+
+   SUPABASE_URL=https://your-project.supabase.co
+   SUPABASE_ANON_KEY=your_supabase_anon_key
+   SUPABASE_JWT_SECRET=your_supabase_jwt_secret
+
+   MAX_TRANSCRIPT_TOKENS=1800
+   CORS_ORIGIN=http://localhost:5173
+   ```
+5. Start the backend development server:
+   ```bash
+   python -m uvicorn main:app --reload --port 8000
+   ```
+   Backend will be live at: `http://localhost:8000`
+
+---
+
+### 4. Frontend Setup
+
+1. Open a new terminal and navigate to the frontend folder:
+   ```bash
+   cd frontend
+   ```
+2. Install node dependencies:
+   ```bash
+   npm install
+   ```
+3. Create a `.env` file inside `frontend/`:
+   ```env
+   VITE_API_BASE=http://localhost:8000
+   VITE_SUPABASE_URL=https://your-project.supabase.co
+   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
+4. Start the Vite dev server:
+   ```bash
+   npm run dev
+   ```
+   Frontend will be live at: `http://localhost:5173`
+
+---
+
+## 🚀 Deployment Guide (100% Free)
+
+### Deploy Backend to Render
+1. Go to [Render.com](https://render.com) &rarr; **New &rarr; Web Service**.
+2. Connect your GitHub repository.
+3. Configure settings:
+   - **Root Directory**: `backend`
+   - **Runtime**: `Python 3`
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+4. Add your Environment Variables (`GROQ_API_KEY`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_JWT_SECRET`, etc.).
+5. Copy your live backend URL (e.g. `https://yt-notes-backend.onrender.com`).
+
+### Deploy Frontend to Vercel
+1. Go to [Vercel.com](https://vercel.com) &rarr; **Add New &rarr; Project**.
+2. Import your GitHub repository.
+3. Set **Root Directory** to `frontend`.
+4. Add Environment Variables:
+   - `VITE_API_BASE` = `https://yt-notes-backend.onrender.com`
+   - `VITE_SUPABASE_URL` = `https://your-project.supabase.co`
+   - `VITE_SUPABASE_ANON_KEY` = `your_anon_key`
+5. Click **Deploy**.
+
+---
+
+## 🔒 Security & Data Privacy
+
+- **Row Level Security (RLS)**: Users can strictly access only their own saved notes, vector chunks, and chat history.
+- **Client-Scoped PostgREST**: The backend resolves authenticated actions using the user's Supabase JWT token.
+- **Protected Environment Variables**: `.env` files are ignored by git; API keys and secrets are never committed.
+
+---
+
+## 📄 License
+This project is open-source and available under the [MIT License](LICENSE).
