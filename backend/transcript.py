@@ -62,22 +62,37 @@ def fetch_transcript(url: str) -> TranscriptResult:
     try:
         transcript_list = ytt.list(video_id)
 
-        # Prefer manually created English, fallback to generated, then any language
-        try:
-            transcript = transcript_list.find_manually_created_transcript(
-                ["en", "en-US", "en-GB"]
-            )
-        except Exception:
+        # 1. Try to find user-preferred transcripts (English, Hindi, or generated)
+        transcript = None
+        for lang_codes in [
+            ["en", "en-US", "en-GB", "en-IN"],
+            ["hi", "hi-IN"],
+        ]:
             try:
-                transcript = transcript_list.find_generated_transcript(
-                    ["en", "en-US", "en-GB"]
-                )
+                transcript = transcript_list.find_manually_created_transcript(lang_codes)
+                break
             except Exception:
-                # Take whatever is available and translate if needed
-                transcript = next(iter(transcript_list))
-                if transcript.language_code not in ("en", "en-US", "en-GB"):
-                    transcript = transcript.translate("en")
+                pass
 
+        if not transcript:
+            for lang_codes in [
+                ["en", "en-US", "en-GB", "en-IN"],
+                ["hi", "hi-IN"],
+            ]:
+                try:
+                    transcript = transcript_list.find_generated_transcript(lang_codes)
+                    break
+                except Exception:
+                    pass
+
+        # If still not found, take whatever transcript is available
+        if not transcript:
+            try:
+                transcript = next(iter(transcript_list))
+            except StopIteration:
+                raise NoTranscriptFound(video_id, [], "No transcripts found")
+
+        # Fetch transcript segments
         fetched = transcript.fetch()
         # v1.x returns FetchedTranscriptSnippet objects with .text/.start/.duration attributes
         segments = []
