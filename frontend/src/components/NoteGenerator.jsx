@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { streamNotes } from '../utils/api'
+import { fetchTranscriptClientSide } from '../utils/transcriptClient'
 import { useAuth } from '../context/AuthContext'
 import ChatPanel from './ChatPanel'
 import AuthModal from './AuthModal'
@@ -219,18 +220,28 @@ export default function NoteGenerator() {
     // Fetch title in background
     fetchVideoTitle(url.trim()).then(t => setVideoTitle(t))
 
-    const { abort } = streamNotes(url.trim(), {
-      onToken: (token) => {
-        setStatus(STATUS.STREAMING)
-        setMarkdown((prev) => prev + token)
-      },
-      onError: (msg) => {
-        setErrorMsg(msg)
-        setStatus(STATUS.ERROR)
-      },
-      onDone: () => setStatus(STATUS.DONE),
-    }, language, model)
-    abortRef.current = abort
+    // Try client-side transcript extraction first (bypasses cloud IP blocks)
+    ;(async () => {
+      let transcriptText = null
+      try {
+        transcriptText = await fetchTranscriptClientSide(url.trim())
+      } catch {
+        // Client-side extraction failed, let backend try
+      }
+
+      const { abort } = streamNotes(url.trim(), {
+        onToken: (token) => {
+          setStatus(STATUS.STREAMING)
+          setMarkdown((prev) => prev + token)
+        },
+        onError: (msg) => {
+          setErrorMsg(msg)
+          setStatus(STATUS.ERROR)
+        },
+        onDone: () => setStatus(STATUS.DONE),
+      }, language, model, transcriptText)
+      abortRef.current = abort
+    })()
   }, [url, language, model])
 
   const handleStop = () => {

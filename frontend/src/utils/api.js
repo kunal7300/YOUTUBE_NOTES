@@ -21,16 +21,19 @@ const API_BASE = import.meta.env.VITE_API_BASE ?? ''
  * @param {{ onToken: Function, onError: Function, onDone: Function }} callbacks
  * @returns {{ abort: Function }} – Call abort() to cancel the stream.
  */
-export function streamNotes(youtubeUrl, { onToken, onError, onDone }, language = 'hinglish', model = 'qwen/qwen3.6-27b') {
+export function streamNotes(youtubeUrl, { onToken, onError, onDone }, language = 'hinglish', model = 'qwen/qwen3.6-27b', transcriptText = null) {
   const controller = new AbortController()
 
   ;(async () => {
     let response
     try {
+      const body = { url: youtubeUrl, language, model }
+      if (transcriptText) body.transcript_text = transcriptText
+
       response = await fetch(`${API_BASE}/generate-notes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: youtubeUrl, language, model }),
+        body: JSON.stringify(body),
         signal: controller.signal,
       })
     } catch (err) {

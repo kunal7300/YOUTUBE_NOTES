@@ -39,6 +39,7 @@ class GenerateRequest(BaseModel):
     url: str
     language: str = "hinglish"  # english | hindi | hinglish
     model: Optional[str] = None  # Groq free model override
+    transcript_text: Optional[str] = None  # Pre-fetched transcript from client
 
 class StoreNotesRequest(BaseModel):
     youtube_url: str
@@ -70,23 +71,27 @@ async def debug_transcript(url: str = Query(...)):
 @app.post("/generate-notes")
 async def generate_notes(body: GenerateRequest):
     async def _pipeline():
-        try:
-            result = fetch_transcript(body.url)
-        except TranscriptError as e:
-            async for event in error_sse(e.user_message): yield event
-            return
-        except Exception as e:
-            async for event in error_sse(f"Unexpected error: {str(e)}"): yield event
-            return
+        # If client sent pre-fetched transcript, use it directly
+        if body.transcript_text and body.transcript_text.strip():
+            transcript_text = body.transcript_text.strip()
+        else:
+            try:
+                result = fetch_transcript(body.url)
+            except TranscriptError as e:
+                async for event in error_sse(e.user_message): yield event
+                return
+            except Exception as e:
+                async for event in error_sse(f"Unexpected error: {str(e)}"): yield event
+                return
+            transcript_text = format_segments_as_timestamped_text(result.segments)
 
-        transcript_text = format_segments_as_timestamped_text(result.segments)
         current_settings = get_settings()
         max_tokens = current_settings["max_transcript_tokens"]
         total_tokens = count_tokens(transcript_text)
         is_chunked = total_tokens > max_tokens
 
         chunks = (
-            split_transcript_into_chunks(transcript_text, result.segments, max_tokens=max_tokens)
+            split_transcript_into_chunks(transcript_text, [], max_tokens=max_tokens)
             if is_chunked else [transcript_text]
         )
 
