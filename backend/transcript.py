@@ -74,6 +74,12 @@ def _fetch_via_ytdlp(video_id: str) -> Optional[TranscriptResult]:
             "subtitleslangs": ["en", "en-US", "en-GB", "en-orig", "hi", "all"],
             "quiet": True,
             "no_warnings": True,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["android", "ios", "mweb", "web"],
+                    "player_skip": ["js", "configs", "webpage"],
+                }
+            },
         }
 
         url = f"https://www.youtube.com/watch?v={video_id}"
@@ -306,28 +312,48 @@ def fetch_transcript(url: str) -> TranscriptResult:
 
 
 def fetch_transcript_debug(url: str) -> dict:
-    """Diagnostic version that reports each layer's execution result."""
+    """Diagnostic version that reports each layer's execution result and exact errors."""
+    import traceback
     video_id = _extract_video_id(url)
     report = {"video_id": video_id, "layers": {}}
 
-    for name, fn in [
-        ("1_ytdlp_python", _fetch_via_ytdlp),
-        ("2_youtube_transcript_api", _fetch_via_library),
-        ("3_web_scrape", _fetch_via_web_scrape),
-    ]:
-        try:
-            result = fn(video_id)
-            if result and result.segments:
-                report["layers"][name] = {
-                    "status": "SUCCESS",
-                    "segments": len(result.segments),
-                    "language": result.language,
-                    "sample": result.segments[0]["text"][:80],
-                }
-                report["success_layer"] = name
-            else:
-                report["layers"][name] = {"status": "EMPTY", "segments": 0}
-        except Exception as e:
-            report["layers"][name] = {"status": "ERROR", "error": str(e)[:200]}
+    # Test Layer 1: yt-dlp
+    try:
+        import yt_dlp
+        ydl_opts = {
+            "skip_download": True,
+            "writesubtitles": True,
+            "writeautomaticsub": True,
+            "subtitleslangs": ["en", "en-US", "en-GB", "en-orig", "hi", "all"],
+            "quiet": True,
+            "no_warnings": True,
+            "extractor_args": {"youtube": {"player_client": ["android", "web"]}},
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
+            subs = list((info.get("subtitles") or {}).keys())
+            auto = list((info.get("automatic_captions") or {}).keys())
+            report["layers"]["1_ytdlp"] = {
+                "status": "INFO_EXTRACTED",
+                "manual_subs": subs[:5],
+                "auto_subs": auto[:5],
+            }
+            res = _fetch_via_ytdlp(video_id)
+            if res and res.segments:
+                report["layers"]["1_ytdlp"]["status"] = "SUCCESS"
+                report["layers"]["1_ytdlp"]["segments"] = len(res.segments)
+                report["layers"]["1_ytdlp"]["sample"] = res.segments[0]["text"][:60]
+    except Exception as e:
+        report["layers"]["1_ytdlp"] = {"status": "ERROR", "error": str(e), "trace": traceback.format_exc()}
+
+    # Test Layer 2: YouTubeTranscriptApi
+    try:
+        from youtube_transcript_api import YouTubeTranscriptApi
+        ytt = YouTubeTranscriptApi()
+        tl = ytt.list(video_id)
+        transcripts = [f"{t.language} ({t.language_code})" for t in tl]
+        report["layers"]["2_library"] = {"status": "LIST_SUCCESS", "available": transcripts[:5]}
+    except Exception as e:
+        report["layers"]["2_library"] = {"status": "ERROR", "error": str(e), "trace": traceback.format_exc()}
 
     return report
