@@ -308,14 +308,67 @@ def _fetch_via_web_scrape(video_id: str) -> Optional[TranscriptResult]:
     return None
 
 
+# ── Layer 4: yt-dlp subtitle extraction ──────────────────────────────────────
+
+def _fetch_via_ytdlp(video_id: str) -> Optional[TranscriptResult]:
+    """Use yt-dlp to extract subtitles — most robust against YouTube blocking."""
+    try:
+        import subprocess, tempfile
+
+        url = f"https://www.youtube.com/watch?v={video_id}"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_template = os.path.join(tmpdir, "%(id)s")
+            cmd = [
+                "yt-dlp",
+                "--write-sub", "--write-auto-sub",
+                "--sub-lang", "en,hi,en-US,en-GB",
+                "--sub-format", "json3",
+                "--skip-download",
+                "--no-warnings",
+                "--no-check-certificates",
+                "-o", out_template,
+                url,
+            ]
+            subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+
+            # Find any .json3 subtitle file
+            for fname in os.listdir(tmpdir):
+                if fname.endswith(".json3"):
+                    filepath = os.path.join(tmpdir, fname)
+                    with open(filepath, "r", encoding="utf-8") as fh:
+                        data = json.load(fh)
+
+                    segments = []
+                    for event in data.get("events", []):
+                        if "segs" not in event:
+                            continue
+                        text = "".join(s.get("utf8", "") for s in event["segs"]).strip()
+                        if text and text != "\n":
+                            start_ms = float(event.get("tStartMs", 0))
+                            dur_ms = float(event.get("dDurationMs", 0))
+                            segments.append({
+                                "text": text,
+                                "start": start_ms / 1000.0,
+                                "duration": dur_ms / 1000.0,
+                            })
+
+                    if segments:
+                        lang = "en" if ".en." in fname else "hi"
+                        return _segments_to_result(video_id, segments, lang)
+    except Exception:
+        pass
+    return None
+
+
 # ── Public entry point ───────────────────────────────────────────────────────
 
 def fetch_transcript(url: str) -> TranscriptResult:
     """
-    Fetch the transcript for a YouTube video using a 3-layer fallback strategy:
+    Fetch the transcript for a YouTube video using a 4-layer fallback strategy:
       1. youtube-transcript-api + consent cookies
       2. Direct Innertube API POST
       3. Web HTML scraping + TimedText XML
+      4. yt-dlp subtitle extraction
 
     Raises TranscriptError if all layers fail.
     """
@@ -336,8 +389,42 @@ def fetch_transcript(url: str) -> TranscriptResult:
     if result and result.segments:
         return result
 
+    # Layer 4: yt-dlp (most robust)
+    result = _fetch_via_ytdlp(video_id)
+    if result and result.segments:
+        return result
+
     raise TranscriptError(
         "Could not retrieve the transcript for this video. "
         "This may happen if the video has no subtitles or YouTube is "
         "temporarily blocking requests. Please try a different video."
     )
+
+
+def fetch_transcript_debug(url: str) -> dict:
+    """Diagnostic version that reports which layer succeeded/failed and why."""
+    video_id = _extract_video_id(url)
+    report = {"video_id": video_id, "layers": {}}
+
+    for name, fn in [
+        ("1_library_cookies", _fetch_via_library),
+        ("2_innertube_api", _fetch_via_innertube),
+        ("3_web_scrape", _fetch_via_web_scrape),
+        ("4_ytdlp", _fetch_via_ytdlp),
+    ]:
+        try:
+            result = fn(video_id)
+            if result and result.segments:
+                report["layers"][name] = {
+                    "status": "SUCCESS",
+                    "segments": len(result.segments),
+                    "language": result.language,
+                    "sample": result.segments[0]["text"][:80] if result.segments else "",
+                }
+                report["success_layer"] = name
+            else:
+                report["layers"][name] = {"status": "EMPTY", "segments": 0}
+        except Exception as e:
+            report["layers"][name] = {"status": "ERROR", "error": str(e)[:200]}
+
+    return report

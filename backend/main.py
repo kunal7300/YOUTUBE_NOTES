@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 from dependencies import get_settings
-from transcript import fetch_transcript, TranscriptError
+from transcript import fetch_transcript, TranscriptError, fetch_transcript_debug
 from utils import count_tokens, split_transcript_into_chunks, format_segments_as_timestamped_text
 from llm import stream_notes, call_llm, QUIZ_PROMPT, FLASHCARD_PROMPT, SUMMARY_PROMPT
 from sse import token_to_sse, error_sse
@@ -58,7 +58,12 @@ class UpdateTagsRequest(BaseModel):
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "version": "3.0.0"}
+    return {"status": "ok", "version": "3.1.0"}
+
+@app.get("/debug-transcript")
+async def debug_transcript(url: str = Query(...)):
+    """Diagnostic endpoint: test all 4 transcript layers and report results."""
+    return fetch_transcript_debug(url)
 
 # ── Generate Notes (public) ───────────────────────────────────────────────────
 
