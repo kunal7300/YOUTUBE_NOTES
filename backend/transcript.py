@@ -1,24 +1,19 @@
 """
-transcript.py – Fetch captions from YouTube with cloud-deployment resilience.
+transcript.py – Fetch captions from YouTube with multi-strategy cloud resilience.
 
 Strategy:
-  1. youtube-transcript-api with SOCS consent cookie (bypasses EU/bot consent wall)
-  2. Direct Innertube API POST (works from datacenter IPs)
-  3. Web page HTML scraping + TimedText XML parse (final fallback)
+  1. yt-dlp Python API (Primary: extracts clean subtitle tracks without binary dependency)
+  2. YouTubeTranscriptApi.list_transcripts() / get_transcript()
+  3. Direct Web HTML Scraping + TimedText XML parse
 """
 
 from dataclasses import dataclass
 from typing import List, Optional
 import re
-import os
 import json
-import html
-import tempfile
 import urllib.request
-import urllib.parse
+import html
 import xml.etree.ElementTree as ET
-import base64
-import struct
 
 
 class TranscriptError(Exception):
@@ -37,33 +32,6 @@ class TranscriptResult:
     language: str
 
 
-# ── Shared helpers ────────────────────────────────────────────────────────────
-
-_BROWSER_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                  "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-    "Accept-Language": "en-US,en;q=0.9",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-}
-
-# SOCS cookie that pre-accepts YouTube consent (bypasses the GDPR wall
-# that blocks headless / datacenter requests).
-_CONSENT_COOKIES = (
-    "# Netscape HTTP Cookie File\n"
-    ".youtube.com\tTRUE\t/\tTRUE\t2147483647\tSOCS\tCAISNQgDEitib3FfaWRlbnRpd"
-    "HlfZnJvbnRlbmRfdWlzZXJ2ZXJfMjAyMzExMDguMDdfcDEaAmVuIAEaBgiA_LyaBg\n"
-    ".youtube.com\tTRUE\t/\tFALSE\t2147483647\tCONSENT\tPENDING+987\n"
-)
-
-def _get_cookies_path() -> str:
-    """Return path to a Netscape cookies.txt with consent cookies."""
-    path = os.path.join(tempfile.gettempdir(), "yt_consent_cookies.txt")
-    if not os.path.exists(path):
-        with open(path, "w") as f:
-            f.write(_CONSENT_COOKIES)
-    return path
-
-
 def _extract_video_id(url: str) -> str:
     url = url.strip()
     if re.match(r"^[A-Za-z0-9_-]{11}$", url):
@@ -78,48 +46,133 @@ def _extract_video_id(url: str) -> str:
             return m.group(1)
     raise TranscriptError(
         "Could not find a valid YouTube video ID in the URL. "
-        "Please paste a valid YouTube link."
+        "Please paste a valid YouTube watch or youtu.be link."
     )
-
-
-def _build_segments(raw) -> List[dict]:
-    """Normalise transcript snippets (v1.x objects or dicts) to list of dicts."""
-    segments = []
-    for s in raw:
-        if hasattr(s, "text"):
-            segments.append({
-                "text": s.text or "",
-                "start": float(s.start or 0.0),
-                "duration": float(s.duration or 0.0),
-            })
-        elif isinstance(s, dict):
-            segments.append({
-                "text": s.get("text", ""),
-                "start": float(s.get("start", 0.0)),
-                "duration": float(s.get("duration", 0.0)),
-            })
-    return segments
 
 
 def _segments_to_result(video_id: str, segments: List[dict], lang: str = "en") -> TranscriptResult:
     full_text = " ".join(s["text"] for s in segments if s["text"])
-    return TranscriptResult(video_id=video_id, transcript_text=full_text,
-                            segments=segments, language=lang)
+    return TranscriptResult(
+        video_id=video_id,
+        transcript_text=full_text,
+        segments=segments,
+        language=lang,
+    )
 
 
-# ── Layer 1: youtube-transcript-api with consent cookies ──────────────────────
+# ── Layer 1: yt-dlp Python API (Most Reliable) ────────────────────────────────
+
+def _fetch_via_ytdlp(video_id: str) -> Optional[TranscriptResult]:
+    """Use yt_dlp library directly in-memory to extract subtitles."""
+    try:
+        import yt_dlp
+
+        ydl_opts = {
+            "skip_download": True,
+            "writesubtitles": True,
+            "writeautomaticsub": True,
+            "subtitleslangs": ["en", "en-US", "en-GB", "en-orig", "hi", "all"],
+            "quiet": True,
+            "no_warnings": True,
+        }
+
+        url = f"https://www.youtube.com/watch?v={video_id}"
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            if not info:
+                return None
+
+            subs = info.get("subtitles") or {}
+            auto_subs = info.get("automatic_captions") or {}
+
+            # Prioritize English, Hindi, or any available track
+            target_formats = None
+            detected_lang = "en"
+
+            for lang in ["en", "en-US", "en-GB", "en-orig", "hi", "hi-IN"]:
+                if lang in subs:
+                    target_formats = subs[lang]
+                    detected_lang = lang
+                    break
+                elif lang in auto_subs:
+                    target_formats = auto_subs[lang]
+                    detected_lang = lang
+                    break
+
+            if not target_formats:
+                # Take first available language
+                if subs:
+                    first_lang = next(iter(subs))
+                    target_formats = subs[first_lang]
+                    detected_lang = first_lang
+                elif auto_subs:
+                    first_lang = next(iter(auto_subs))
+                    target_formats = auto_subs[first_lang]
+                    detected_lang = first_lang
+
+            if not target_formats:
+                return None
+
+            fmt_map = {f.get("ext"): f.get("url") for f in target_formats if f.get("url")}
+
+            # Try json3 format
+            if "json3" in fmt_map:
+                req = urllib.request.Request(
+                    fmt_map["json3"],
+                    headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
+                )
+                with urllib.request.urlopen(req, timeout=12) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+
+                segments = []
+                for event in data.get("events", []):
+                    if "segs" in event:
+                        text = "".join(s.get("utf8", "") for s in event["segs"]).strip()
+                        if text and text != "\n":
+                            start = float(event.get("tStartMs", 0)) / 1000.0
+                            dur = float(event.get("dDurationMs", 0)) / 1000.0
+                            segments.append({"text": text, "start": start, "duration": dur})
+
+                if segments:
+                    return _segments_to_result(video_id, segments, detected_lang)
+
+            # Try srv1 / srv2 / srv3 / ttml XML format
+            for ext in ["srv3", "srv2", "srv1", "ttml"]:
+                if ext in fmt_map:
+                    req = urllib.request.Request(
+                        fmt_map[ext],
+                        headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
+                    )
+                    with urllib.request.urlopen(req, timeout=12) as resp:
+                        xml_text = resp.read().decode("utf-8", errors="ignore")
+
+                    root = ET.fromstring(xml_text)
+                    segments = []
+                    for elem in root.findall(".//text"):
+                        text = html.unescape(elem.text or "").strip()
+                        if text:
+                            start = float(elem.attrib.get("start", 0))
+                            dur = float(elem.attrib.get("dur", 0))
+                            segments.append({"text": text, "start": start, "duration": dur})
+
+                    if segments:
+                        return _segments_to_result(video_id, segments, detected_lang)
+
+    except Exception:
+        pass
+    return None
+
+
+# ── Layer 2: YouTubeTranscriptApi ────────────────────────────────────────────
 
 def _fetch_via_library(video_id: str) -> Optional[TranscriptResult]:
-    """Use youtube-transcript-api with SOCS consent cookie."""
+    """Standard youtube_transcript_api call."""
     try:
         from youtube_transcript_api import YouTubeTranscriptApi
 
-        cookies_path = _get_cookies_path()
-        ytt = YouTubeTranscriptApi(cookies=cookies_path)
-
+        ytt = YouTubeTranscriptApi()
         transcript_list = ytt.list(video_id)
 
-        # Search priority: manual EN/HI → generated EN/HI → any track
         transcript = None
         for lang_codes in [["en", "en-US", "en-GB", "en-IN"], ["hi", "hi-IN"]]:
             try:
@@ -141,7 +194,21 @@ def _fetch_via_library(video_id: str) -> Optional[TranscriptResult]:
                 return None
 
         fetched = transcript.fetch()
-        segments = _build_segments(fetched)
+        segments = []
+        for s in fetched:
+            if hasattr(s, "text"):
+                segments.append({
+                    "text": s.text or "",
+                    "start": float(s.start or 0.0),
+                    "duration": float(s.duration or 0.0),
+                })
+            elif isinstance(s, dict):
+                segments.append({
+                    "text": s.get("text", ""),
+                    "start": float(s.get("start", 0.0)),
+                    "duration": float(s.get("duration", 0.0)),
+                })
+
         if segments:
             return _segments_to_result(video_id, segments, transcript.language_code)
     except Exception:
@@ -149,114 +216,18 @@ def _fetch_via_library(video_id: str) -> Optional[TranscriptResult]:
     return None
 
 
-# ── Layer 2: Direct Innertube API ────────────────────────────────────────────
-
-def _build_innertube_params(video_id: str) -> str:
-    """Build the base64-encoded protobuf 'params' for get_transcript."""
-    # Minimal protobuf: field 1 (string) = "\n" + video_id
-    inner = b"\x0a" + bytes([len(video_id)]) + video_id.encode("utf-8")
-    # Wrap: field 2 (string) = inner
-    outer = b"\x12" + bytes([len(inner)]) + inner
-    return base64.b64encode(outer).decode("ascii")
-
-
-def _fetch_via_innertube(video_id: str) -> Optional[TranscriptResult]:
-    """Call YouTube's internal Innertube get_transcript endpoint."""
-    try:
-        api_url = "https://www.youtube.com/youtubei/v1/get_transcript"
-        payload = json.dumps({
-            "context": {
-                "client": {
-                    "clientName": "WEB",
-                    "clientVersion": "2.20240313.05.00",
-                    "hl": "en",
-                    "gl": "US",
-                }
-            },
-            "params": _build_innertube_params(video_id),
-        }).encode("utf-8")
-
-        req = urllib.request.Request(
-            api_url,
-            data=payload,
-            headers={
-                "Content-Type": "application/json",
-                "User-Agent": _BROWSER_HEADERS["User-Agent"],
-                "Origin": "https://www.youtube.com",
-                "Referer": f"https://www.youtube.com/watch?v={video_id}",
-            },
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-
-        # Navigate the Innertube response structure
-        actions = data.get("actions", [])
-        if not actions:
-            return None
-
-        body = None
-        for action in actions:
-            panel = action.get("updateEngagementPanelAction", {}).get("content", {})
-            renderer = panel.get("transcriptRenderer", {})
-            body_r = renderer.get("body", {}).get("transcriptBodyRenderer", {})
-            if body_r:
-                body = body_r
-                break
-
-        # Alternative path
-        if not body:
-            for action in actions:
-                seg_list = action.get("updateEngagementPanelAction", {}) \
-                    .get("content", {}) \
-                    .get("transcriptRenderer", {}) \
-                    .get("content", {}) \
-                    .get("transcriptSearchPanelRenderer", {}) \
-                    .get("body", {}) \
-                    .get("transcriptSegmentListRenderer", {})
-                if seg_list:
-                    body = seg_list
-                    break
-
-        if not body:
-            return None
-
-        initial_segments = body.get("initialSegments", [])
-        segments = []
-        for seg in initial_segments:
-            renderer = seg.get("transcriptSegmentRenderer", {})
-            snippet = renderer.get("snippet", {}).get("runs", [])
-            text = "".join(r.get("text", "") for r in snippet).strip()
-            start_ms = int(renderer.get("startMs", "0"))
-            end_ms = int(renderer.get("endMs", "0"))
-            if text:
-                segments.append({
-                    "text": text,
-                    "start": start_ms / 1000.0,
-                    "duration": (end_ms - start_ms) / 1000.0,
-                })
-
-        if segments:
-            return _segments_to_result(video_id, segments, "en")
-    except Exception:
-        pass
-    return None
-
-
-# ── Layer 3: Web page HTML + TimedText XML ───────────────────────────────────
+# ── Layer 3: Web HTML Scraping + TimedText XML ────────────────────────────────
 
 def _fetch_via_web_scrape(video_id: str) -> Optional[TranscriptResult]:
-    """Scrape captionTracks from YouTube HTML and fetch the TimedText XML."""
+    """Scrape captionTracks from YouTube HTML."""
     try:
         url = f"https://www.youtube.com/watch?v={video_id}"
-        cookie_handler = urllib.request.HTTPCookieProcessor()
-        opener = urllib.request.build_opener(cookie_handler)
-        
-        headers = dict(_BROWSER_HEADERS)
-        headers["Cookie"] = "SOCS=CAISNQgDEitib3FfaWRlbnRpdHlfZnJvbnRlbmRfdWlzZXJ2ZXJfMjAyMzExMDguMDdfcDEaAmVuIAEaBgiA_LyaBg; CONSENT=PENDING+987"
-        
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+            "Accept-Language": "en-US,en;q=0.9,hi;q=0.8",
+        }
         req = urllib.request.Request(url, headers=headers)
-        with opener.open(req, timeout=15) as resp:
+        with urllib.request.urlopen(req, timeout=12) as resp:
             html_text = resp.read().decode("utf-8", errors="ignore")
 
         m = re.search(r'"captionTracks":(\[.*?\])', html_text)
@@ -267,16 +238,10 @@ def _fetch_via_web_scrape(video_id: str) -> Optional[TranscriptResult]:
         if not tracks:
             return None
 
-        # Prefer English or Hindi
         track = tracks[0]
         for t in tracks:
             code = t.get("languageCode", "").lower()
-            if code.startswith("en"):
-                track = t
-                break
-        for t in tracks:
-            code = t.get("languageCode", "").lower()
-            if code.startswith("hi"):
+            if code.startswith("en") or code.startswith("hi"):
                 track = t
                 break
 
@@ -285,7 +250,7 @@ def _fetch_via_web_scrape(video_id: str) -> Optional[TranscriptResult]:
             return None
 
         req2 = urllib.request.Request(base_url, headers=headers)
-        with opener.open(req2, timeout=15) as resp2:
+        with urllib.request.urlopen(req2, timeout=12) as resp2:
             xml_data = resp2.read().decode("utf-8", errors="ignore")
 
         if not xml_data.strip():
@@ -301,116 +266,54 @@ def _fetch_via_web_scrape(video_id: str) -> Optional[TranscriptResult]:
                 segments.append({"text": text, "start": start, "duration": dur})
 
         if segments:
-            lang = track.get("languageCode", "en")
-            return _segments_to_result(video_id, segments, lang)
+            return _segments_to_result(video_id, segments, track.get("languageCode", "en"))
     except Exception:
         pass
     return None
 
 
-# ── Layer 4: yt-dlp subtitle extraction ──────────────────────────────────────
-
-def _fetch_via_ytdlp(video_id: str) -> Optional[TranscriptResult]:
-    """Use yt-dlp to extract subtitles — most robust against YouTube blocking."""
-    try:
-        import subprocess, tempfile
-
-        url = f"https://www.youtube.com/watch?v={video_id}"
-        with tempfile.TemporaryDirectory() as tmpdir:
-            out_template = os.path.join(tmpdir, "%(id)s")
-            cmd = [
-                "yt-dlp",
-                "--write-sub", "--write-auto-sub",
-                "--sub-lang", "en,hi,en-US,en-GB",
-                "--sub-format", "json3",
-                "--skip-download",
-                "--no-warnings",
-                "--no-check-certificates",
-                "-o", out_template,
-                url,
-            ]
-            subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-
-            # Find any .json3 subtitle file
-            for fname in os.listdir(tmpdir):
-                if fname.endswith(".json3"):
-                    filepath = os.path.join(tmpdir, fname)
-                    with open(filepath, "r", encoding="utf-8") as fh:
-                        data = json.load(fh)
-
-                    segments = []
-                    for event in data.get("events", []):
-                        if "segs" not in event:
-                            continue
-                        text = "".join(s.get("utf8", "") for s in event["segs"]).strip()
-                        if text and text != "\n":
-                            start_ms = float(event.get("tStartMs", 0))
-                            dur_ms = float(event.get("dDurationMs", 0))
-                            segments.append({
-                                "text": text,
-                                "start": start_ms / 1000.0,
-                                "duration": dur_ms / 1000.0,
-                            })
-
-                    if segments:
-                        lang = "en" if ".en." in fname else "hi"
-                        return _segments_to_result(video_id, segments, lang)
-    except Exception:
-        pass
-    return None
-
-
-# ── Public entry point ───────────────────────────────────────────────────────
+# ── Public Entry Point ────────────────────────────────────────────────────────
 
 def fetch_transcript(url: str) -> TranscriptResult:
     """
-    Fetch the transcript for a YouTube video using a 4-layer fallback strategy:
-      1. youtube-transcript-api + consent cookies
-      2. Direct Innertube API POST
-      3. Web HTML scraping + TimedText XML
-      4. yt-dlp subtitle extraction
-
-    Raises TranscriptError if all layers fail.
+    Fetch the transcript for a YouTube video.
+    Executes multi-layer strategy:
+      1. yt-dlp Python API (Primary)
+      2. YouTubeTranscriptApi (Secondary)
+      3. Web TimedText Scraping (Fallback)
     """
     video_id = _extract_video_id(url)
 
-    # Layer 1: youtube-transcript-api with consent cookie
-    result = _fetch_via_library(video_id)
-    if result and result.segments:
-        return result
+    # 1. yt-dlp Python API
+    res = _fetch_via_ytdlp(video_id)
+    if res and res.segments:
+        return res
 
-    # Layer 2: Innertube API
-    result = _fetch_via_innertube(video_id)
-    if result and result.segments:
-        return result
+    # 2. YouTubeTranscriptApi
+    res = _fetch_via_library(video_id)
+    if res and res.segments:
+        return res
 
-    # Layer 3: Web scrape fallback
-    result = _fetch_via_web_scrape(video_id)
-    if result and result.segments:
-        return result
-
-    # Layer 4: yt-dlp (most robust)
-    result = _fetch_via_ytdlp(video_id)
-    if result and result.segments:
-        return result
+    # 3. Web Scrape
+    res = _fetch_via_web_scrape(video_id)
+    if res and res.segments:
+        return res
 
     raise TranscriptError(
         "Could not retrieve the transcript for this video. "
-        "This may happen if the video has no subtitles or YouTube is "
-        "temporarily blocking requests. Please try a different video."
+        "Please ensure the video has subtitles/captions enabled or try another lecture."
     )
 
 
 def fetch_transcript_debug(url: str) -> dict:
-    """Diagnostic version that reports which layer succeeded/failed and why."""
+    """Diagnostic version that reports each layer's execution result."""
     video_id = _extract_video_id(url)
     report = {"video_id": video_id, "layers": {}}
 
     for name, fn in [
-        ("1_library_cookies", _fetch_via_library),
-        ("2_innertube_api", _fetch_via_innertube),
+        ("1_ytdlp_python", _fetch_via_ytdlp),
+        ("2_youtube_transcript_api", _fetch_via_library),
         ("3_web_scrape", _fetch_via_web_scrape),
-        ("4_ytdlp", _fetch_via_ytdlp),
     ]:
         try:
             result = fn(video_id)
@@ -419,7 +322,7 @@ def fetch_transcript_debug(url: str) -> dict:
                     "status": "SUCCESS",
                     "segments": len(result.segments),
                     "language": result.language,
-                    "sample": result.segments[0]["text"][:80] if result.segments else "",
+                    "sample": result.segments[0]["text"][:80],
                 }
                 report["success_layer"] = name
             else:
