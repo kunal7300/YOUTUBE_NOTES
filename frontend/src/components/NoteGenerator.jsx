@@ -191,6 +191,8 @@ export default function NoteGenerator() {
   const [showChat, setShowChat] = useState(false)
   const [showAuth, setShowAuth] = useState(false)
   const [videoTitle, setVideoTitle] = useState('')
+  const [manualTranscript, setManualTranscript] = useState('')
+  const [showManualInput, setShowManualInput] = useState(false)
   const abortRef = useRef(null)
 
   const isRunning = status === STATUS.LOADING || status === STATUS.STREAMING
@@ -207,7 +209,7 @@ export default function NoteGenerator() {
   }
 
   const handleGenerate = useCallback(() => {
-    if (!url.trim()) return
+    if (!url.trim() && !manualTranscript.trim()) return
     if (abortRef.current) abortRef.current()
     setMarkdown('')
     setErrorMsg('')
@@ -217,19 +219,25 @@ export default function NoteGenerator() {
     setVideoTitle('')
     setStatus(STATUS.LOADING)
 
-    // Fetch title in background
-    fetchVideoTitle(url.trim()).then(t => setVideoTitle(t))
+    // Fetch title in background if URL is provided
+    if (url.trim()) {
+      fetchVideoTitle(url.trim()).then(t => setVideoTitle(t))
+    }
 
-    // Try client-side transcript extraction first (bypasses cloud IP blocks)
     ;(async () => {
-      let transcriptText = null
-      try {
-        transcriptText = await fetchTranscriptClientSide(url.trim())
-      } catch {
-        // Client-side extraction failed, let backend try
+      let transcriptText = manualTranscript.trim() || null
+
+      // If no manual transcript pasted, try client-side extraction
+      if (!transcriptText && url.trim()) {
+        try {
+          transcriptText = await fetchTranscriptClientSide(url.trim())
+        } catch {
+          // Client-side extraction failed, backend fallback will be tried
+        }
       }
 
-      const { abort } = streamNotes(url.trim(), {
+      const fallbackUrl = url.trim() || 'https://www.youtube.com/watch?v=manual'
+      const { abort } = streamNotes(fallbackUrl, {
         onToken: (token) => {
           setStatus(STATUS.STREAMING)
           setMarkdown((prev) => prev + token)
@@ -237,12 +245,14 @@ export default function NoteGenerator() {
         onError: (msg) => {
           setErrorMsg(msg)
           setStatus(STATUS.ERROR)
+          // Open manual input box automatically so user can paste transcript
+          setShowManualInput(true)
         },
         onDone: () => setStatus(STATUS.DONE),
       }, language, model, transcriptText)
       abortRef.current = abort
     })()
-  }, [url, language, model])
+  }, [url, manualTranscript, language, model])
 
   const handleStop = () => {
     if (abortRef.current) abortRef.current()
@@ -357,16 +367,118 @@ export default function NoteGenerator() {
         {isRunning ? (
           <button style={{ ...styles.button, background: '#374151' }} onClick={handleStop}>Stop</button>
         ) : (
-          <button style={{ ...styles.button, ...(!url.trim() ? styles.buttonDisabled : {}) }}
-            onClick={handleGenerate} disabled={!url.trim()}>
+          <button style={{ ...styles.button, ...((!url.trim() && !manualTranscript.trim()) ? styles.buttonDisabled : {}) }}
+            onClick={handleGenerate} disabled={!url.trim() && !manualTranscript.trim()}>
             Generate
           </button>
         )}
       </div>
 
-      {/* Error box */}
+      {/* Manual Transcript Toggle & Textarea */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-0.75rem', marginBottom: '1.25rem' }}>
+        <button
+          type="button"
+          onClick={() => setShowManualInput(!showManualInput)}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: '#818cf8',
+            fontSize: '0.83rem',
+            cursor: 'pointer',
+            padding: 0,
+            textDecoration: 'underline',
+            opacity: 0.9,
+          }}
+        >
+          {showManualInput ? '▲ Hide manual transcript' : '📝 Paste transcript manually'}
+        </button>
+      </div>
+
+      {showManualInput && (
+        <div style={{
+          background: '#0f172a',
+          border: '1px solid #334155',
+          borderRadius: '8px',
+          padding: '1rem',
+          marginBottom: '1.5rem',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.25rem' }}>
+            <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: 600 }}>
+              Paste Transcript or Lecture Text
+            </span>
+            <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
+              (YouTube &rarr; ... &rarr; Show transcript &rarr; Copy & Paste)
+            </span>
+          </div>
+          <textarea
+            rows={5}
+            style={{
+              width: '100%',
+              padding: '0.75rem',
+              borderRadius: '6px',
+              border: '1px solid #1e293b',
+              background: '#020617',
+              color: '#e2e8f0',
+              fontSize: '0.88rem',
+              fontFamily: 'inherit',
+              resize: 'vertical',
+              outline: 'none',
+              boxSizing: 'border-box',
+            }}
+            placeholder="Paste raw transcript or video text here..."
+            value={manualTranscript}
+            onChange={(e) => setManualTranscript(e.target.value)}
+            disabled={isRunning}
+          />
+          {manualTranscript.trim() && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+              <button
+                type="button"
+                style={{
+                  padding: '0.45rem 1rem',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
+                  color: '#fff',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+                onClick={handleGenerate}
+                disabled={isRunning}
+              >
+                Generate from Pasted Transcript &rarr;
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Error box with action button */}
       {status === STATUS.ERROR && (
-        <div style={styles.errorBox}>{errorMsg}</div>
+        <div style={styles.errorBox}>
+          <div style={{ marginBottom: '0.5rem' }}>{errorMsg}</div>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => setShowManualInput(true)}
+              style={{
+                background: '#4f46e5',
+                color: '#fff',
+                border: 'none',
+                padding: '0.35rem 0.85rem',
+                borderRadius: '6px',
+                fontSize: '0.82rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              📝 Paste Transcript Manually
+            </button>
+            <span style={{ fontSize: '0.78rem', color: '#fca5a5' }}>
+              (Copy from YouTube &rarr; Click button &rarr; Generate)
+            </span>
+          </div>
+        </div>
       )}
 
       {/* Toolbar */}
