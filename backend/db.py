@@ -11,9 +11,25 @@ load_dotenv()
 _DEFAULT_SUPABASE_URL = "https://uueporkqhbtcrjppausm.supabase.co"
 _DEFAULT_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1ZXBvcmtxaGJ0Y3JqcHBhdXNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgxMTE4MDIsImV4cCI6MjEwMzY4NzgwMn0.e94ZtIdxd14KxzRCHa7aDQdAwkAi4JLl8WwcDXmi--A"
 
+def _clean_supabase_key(val: str | None) -> str:
+    if not val:
+        return _DEFAULT_SUPABASE_ANON_KEY
+    v = val.strip().strip("'\"")
+    if v.count(".") == 2 and len(v) > 50:
+        return v
+    return _DEFAULT_SUPABASE_ANON_KEY
+
+def _clean_supabase_url(val: str | None) -> str:
+    if not val:
+        return _DEFAULT_SUPABASE_URL
+    v = val.strip().strip("'\"").rstrip("/")
+    if v.startswith("https://") and ".supabase.co" in v:
+        return v
+    return _DEFAULT_SUPABASE_URL
+
 _supabase: Client | None = None
-_SUPABASE_URL = os.getenv("SUPABASE_URL") or _DEFAULT_SUPABASE_URL
-_SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY") or _DEFAULT_SUPABASE_ANON_KEY
+_SUPABASE_URL = _clean_supabase_url(os.getenv("SUPABASE_URL"))
+_SUPABASE_ANON_KEY = _clean_supabase_key(os.getenv("SUPABASE_ANON_KEY"))
 
 
 def get_supabase() -> Client:
