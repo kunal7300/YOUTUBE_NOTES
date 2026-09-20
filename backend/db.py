@@ -8,17 +8,18 @@ from supabase import create_client, Client
 
 load_dotenv()
 
+_DEFAULT_SUPABASE_URL = "https://uueporkqhbtcrjppausm.supabase.co"
+_DEFAULT_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1ZXBvcmtxaGJ0Y3JqcHBhdXNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgxMTE4MDIsImV4cCI6MjEwMzY4NzgwMn0.e94ZtIdxd14KxzRCHa7aDQdAwkAi4JLl8WwcDXmi--A"
+
 _supabase: Client | None = None
-_SUPABASE_URL = os.getenv("SUPABASE_URL", "")
-_SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
+_SUPABASE_URL = os.getenv("SUPABASE_URL") or _DEFAULT_SUPABASE_URL
+_SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY") or _DEFAULT_SUPABASE_ANON_KEY
 
 
 def get_supabase() -> Client:
     """Return a singleton Supabase client (anon key — for auth verification only)."""
     global _supabase
     if _supabase is None:
-        if not _SUPABASE_URL or not _SUPABASE_ANON_KEY:
-            raise EnvironmentError("SUPABASE_URL and SUPABASE_ANON_KEY must be set in .env")
         _supabase = create_client(_SUPABASE_URL, _SUPABASE_ANON_KEY)
     return _supabase
 
