@@ -199,8 +199,10 @@ export default function NoteGenerator() {
 
   // Fetch real YouTube video title via oEmbed (no API key needed)
   const fetchVideoTitle = async (videoUrl) => {
+    if (!videoUrl || !videoUrl.trim()) return ''
     try {
-      const res = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(videoUrl)}&format=json`)
+      const res = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(videoUrl.trim())}&format=json`)
+      if (!res.ok) return ''
       const data = await res.json()
       return data.title || ''
     } catch {
@@ -263,12 +265,26 @@ export default function NoteGenerator() {
     if (!user) { setShowAuth(true); return }
     setSaving(true)
     try {
-      // Use real title, fallback to fetched title, fallback to video ID
-      const title = videoTitle || await fetchVideoTitle(url.trim()) || url.replace(/.*v=/, '').slice(0, 50) || 'Untitled'
+      // Extract title: from videoTitle -> oEmbed -> markdown # Heading -> fallback
+      let extractedTitle = videoTitle
+      if (!extractedTitle && url.trim()) {
+        extractedTitle = await fetchVideoTitle(url.trim())
+      }
+      if (!extractedTitle && markdown) {
+        const headingMatch = markdown.match(/^#+\s+(.+)$/m)
+        if (headingMatch) extractedTitle = headingMatch[1].trim()
+      }
+      const title = extractedTitle || (url.trim() ? url.replace(/.*v=/, '').slice(0, 50) : 'Lecture Notes')
+
       const res = await fetch(`${API}/store-notes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ youtube_url: url, title, notes_text: markdown, language }),
+        body: JSON.stringify({
+          youtube_url: url.trim() || 'https://www.youtube.com/watch?v=manual',
+          title,
+          notes_text: markdown,
+          language,
+        }),
       })
       if (!res.ok) {
         const err = await res.json()
